@@ -1,0 +1,25 @@
+{
+  "name": "s19y-mcp",
+  "version": "0.1.0",
+  "description": "Self Reflexion Memory MCP Server built with agent for agents",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "keywords": [
+    "mcp",
+    "memory",
+    "ai-agent",
+    "model-context-protocol"
+  ],
+  "author": "RevoFab s.r.o.",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/server-memory": "^2026.7.4",
+    "express": "^4.18.0"
+  }
+}

@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  mcp-memory:
+    build: .
+    container_name: s18y-mcp-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - API_KEY=${API_KEY:-change-to-your-api-key}
+    volumes:
+      - mcp-data:/app/data
+
+volumes:
+  mcp-data:
