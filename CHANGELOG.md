@@ -9,6 +9,26 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
 
 No unreleased changes yet.
 
+## [0.1.2] - 2026-09-01
+
+### Fixed (0.1.2)
+
+- Persist memories to `DATA_DIR` (default `/app/data`) instead of the
+  ephemeral `node_modules` path, so data survives container replacement
+- Create the data directory on startup when it does not yet exist
+
+### Changed (0.1.2)
+
+- Standard users now install via `docker pull`; building from source is
+  a separate development path
+- Document opencode `shared-memory_*` tool permissions and the `remote`
+  MCP client type
+
+### Added (0.1.2)
+
+- Memory file location configurable via `MEMORY_FILE_PATH`, defaulting
+  to `<DATA_DIR>/memory.jsonl`
+
 ## [0.1.1] - 2026-09-01
 
 ### Security
@@ -44,6 +64,7 @@ Initial release of the S19y MCP Server with the following features:
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html
-[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.1.1...HEAD
+[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/jiripech/s19y-mcp/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/jiripech/s19y-mcp/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/jiripech/s19y-mcp/releases/tag/v0.1.0
