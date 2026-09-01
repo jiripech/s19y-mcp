@@ -68,7 +68,9 @@ To add a new MCP tool:
 
 ## Git Workflow
 
-- Commit messages: Use clear, descriptive messages, [convntional commits](https://www.conventionalcommits.org/en/v1.0.0/) if possible
+- Commit messages: Use clear, descriptive messages,
+  [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/)
+  if possible
   - Example: `feat: Add user authentication middleware`
   - Example: `fix: Improve session cleanup on disconnect`
 - Branch naming: `feature/description` or `fix/description`
