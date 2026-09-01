@@ -19,6 +19,7 @@ RUN chmod +x entrypoint.sh
 # Environment configuration
 ENV PORT=3000
 ENV DATA_DIR=/app/data
+ENV MEMORY_FILE_PATH=/app/data/memory.jsonl
 VOLUME /app/data
 
 EXPOSE 3000
