@@ -1,0 +1,49 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog][kac], and this project adheres to
+[Semantic Versioning][semver].
+
+## [Unreleased]
+
+No unreleased changes yet.
+
+## [0.1.1] - 2026-09-01
+
+### Security
+
+- Patch base image packages on build (fixes OpenSSL CVE-2026-14456)
+- Remove the bundled npm CLI from the runtime image to drop unused
+  vulnerable packages (brace-expansion, tar, ip-address)
+
+### Fixed
+
+- Copy `memory-server.mjs` into the image so the server starts
+  (was `ERR_MODULE_NOT_FOUND` at startup)
+- Pin `ip-address` to 10.7.0 via overrides (fixes SSRF CVE-2026-69192)
+- Install dependencies from `package-lock.json` for reproducible builds
+
+### Changed
+
+- License changed to MIT (see `LICENSE` and `THIRD_PARTY_NOTICES.md`)
+
+### Added
+
+- Dockerfile completeness tests that assert all local modules imported
+  by the server are copied into the image
+
+## [0.1.0] - 2026-09-01
+
+Initial release of the S19y MCP Server with the following features:
+
+- Knowledge graph memory server over MCP (SSE) with API key auth
+- Docker image with entrypoint that validates `API_KEY` at startup
+- Multi-architecture Docker builds (linux/amd64, linux/arm64)
+- CI workflow for Docker build and push to Docker Hub
+
+[kac]: https://keepachangelog.com/en/1.1.0/
+[semver]: https://semver.org/spec/v2.0.0.html
+[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/jiripech/s19y-mcp/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/jiripech/s19y-mcp/releases/tag/v0.1.0
