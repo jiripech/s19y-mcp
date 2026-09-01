@@ -1,14 +1,26 @@
+import { mkdir } from 'node:fs/promises'
+import path from 'node:path'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { KnowledgeGraphManager, ensureMemoryFilePath } from '@modelcontextprotocol/server-memory/dist/index.js'
+import { KnowledgeGraphManager } from '@modelcontextprotocol/server-memory/dist/index.js'
 import { z } from 'zod'
+
+async function resolveMemoryPath() {
+  if (process.env.MEMORY_FILE_PATH) {
+    await mkdir(path.dirname(process.env.MEMORY_FILE_PATH), { recursive: true })
+    return process.env.MEMORY_FILE_PATH
+  }
+  const dataDir = process.env.DATA_DIR || '/app/data'
+  await mkdir(dataDir, { recursive: true })
+  return path.join(dataDir, 'memory.jsonl')
+}
 
 export async function createServer() {
   const server = new McpServer({
     name: 's19y-memory',
-    version: '0.1.0'
+    version: '0.1.2'
   })
 
-  const memoryPath = await ensureMemoryFilePath()
+  const memoryPath = await resolveMemoryPath()
   const manager = new KnowledgeGraphManager(memoryPath)
 
   server.tool(
