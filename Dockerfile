@@ -1,10 +1,18 @@
 FROM node:current-alpine
+
+# Keep base packages (e.g. OpenSSL) patched
+RUN apk upgrade --no-cache
+
 WORKDIR /app
 
-# Install MCP SDK, Memory Server module, and Express
-RUN npm install @modelcontextprotocol/sdk @modelcontextprotocol/server-memory express
+# Install dependencies from lockfile (reproducible)
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev \
+    && rm -rf /usr/local/lib/node_modules/npm
 
+# Copy application source
 COPY server.mjs .
+COPY memory-server.mjs .
 COPY entrypoint.sh .
 RUN chmod +x entrypoint.sh
 
