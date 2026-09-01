@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> Self Reflexion Memory MCP Server built with agent for agents
+> Self Reflexion Memory MCP Server built with agents for agents
 
 ## Description
 
@@ -172,6 +172,10 @@ Please feel free to submit a Pull Request.
 Licensed under the [MIT License](LICENSE).
 Third-party components are listed in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## Further reading
+
+This software builds on the **Blackboard architecture** and insights from the study _[Generative Agents: Interactive Simulacra of Human Behavior_ (Park et al., 2023)](https://arxiv.org/html/2304.03442v2).
 
 ## Support
 
