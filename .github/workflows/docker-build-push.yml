@@ -39,10 +39,12 @@ jobs:
       - name: Compute image tag
         id: meta
         run: |
+          BASE="${REGISTRY}/${NAMESPACE}/${IMAGE_NAME}"
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
-            echo "TAG=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            # Version release: push both the version tag and latest
+            { echo "TAGS<<EOF"; printf '%s\n' "${BASE}:${GITHUB_REF_NAME}" "${BASE}:latest"; echo "EOF"; } >> "$GITHUB_OUTPUT"
           else
-            echo "TAG=latest" >> "$GITHUB_OUTPUT"
+            { echo "TAGS<<EOF"; echo "${BASE}:latest"; echo "EOF"; } >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build and push
@@ -51,6 +53,6 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.TAG }}
+          tags: ${{ steps.meta.outputs.TAGS }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
