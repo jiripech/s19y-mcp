@@ -97,6 +97,20 @@ build without pushing.
   - `DOCKER_USERNAME`: Docker Hub username
   - `DOCKER_TOKEN`: Docker Hub access token
 
+## Releases / Versioning
+
+- Keep `CHANGELOG.md` up to date and in [Keep a Changelog][kac] format.
+- Adhere to [Semantic Versioning][semver]: version = `major.minor.patch`.
+- Before suggesting a release version, read `CHANGELOG.md` to find the
+  **last released version** and bump it by one patch/minor/major - never
+  skip numbers or invent a version. Also keep `package.json`,
+  `memory-server.mjs` server version, and the git tag in sync.
+- To release: cut the version tag (e.g. `v0.1.2`) and push; CI builds the
+  multi-arch image and pushes to Docker Hub.
+
+[kac]: https://keepachangelog.com/en/1.1.0/
+[semver]: https://semver.org/spec/v2.0.0.html
+
 ## Environment Variables
 
 | Variable   | Required | Description                          |
