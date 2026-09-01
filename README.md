@@ -6,10 +6,11 @@
 
 ## Description
 
-S19y MCP Server is a Model Context Protocol (MCP) server that provides
-self-reflexion memory capabilities for AI agents. It enables agents to store,
-retrieve, and reflect on their experiences, creating a persistent memory layer
-that enhances agent capabilities across sessions.
+S19y MCP Server is a
+[Model Context Protocol](https://en.wikipedia.org/wiki/Model_Context_Protocol)
+(MCP) server that provides self-reflexion memory capabilities for AI agents.
+It enables agents to store, retrieve, and reflect on their experiences,
+creating a persistent memory layer that enhances agent capabilities.
 
 ## Features
 
@@ -26,26 +27,52 @@ that enhances agent capabilities across sessions.
 
 ### Using Docker (Recommended)
 
+A prebuilt image is published on Docker Hub. Pull and run it directly,
+no source checkout or build required:
+
+```bash
+docker pull hqcz/s19y-mcp:latest
+docker run -d \
+  -p 3000:3000 \
+  -e API_KEY=your-api-key-here \
+  -v s19y-data:/app/data \
+  hqcz/s19y-mcp:latest
+```
+
+- `-v s19y-data:/app/data` persists memories across container restarts.
+- Set `API_KEY` to the key your MCP clients will authenticate with.
+- See [Configuration](#configuration) for all environment variables.
+
+### Build from source
+
+For development or building your own image:
+
 ```bash
 git clone https://github.com/jiripech/s19y-mcp.git
 cd s19y-mcp
 docker build -t s19y-mcp .
-docker run -p 3000:3000 s19y-mcp
+docker run -p 3000:3000 -e API_KEY=your-api-key-here s19y-mcp
 ```
 
 ### Push to Docker Hub
+
+Maintainers can build and push the multi-arch image:
 
 ```bash
 DOCKER_NAMESPACE=your-user DOCKER_TAG=1.0.0 ./scripts/build.sh
 ```
 
-### Configure local opencode client
+### Configure opencode client
+
+The server speaks MCP over SSE
+([Streamable HTTP](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports)
+or SSE). Add it to your opencode config:
 
 ```json
 {
   "mcp": {
     "shared-memory": {
-      "type": "sse",
+      "type": "remote",
       "url": "http://localhost:3000/sse",
       "headers": {
         "X-API-Key": "your-api-key-here"
@@ -54,6 +81,32 @@ DOCKER_NAMESPACE=your-user DOCKER_TAG=1.0.0 ./scripts/build.sh
   }
 }
 ```
+
+The server exposes five MCP tools, available to agents as
+`shared-memory_<tool>`. To let all agents use the shared memory freely,
+allow them in the opencode `permission` block:
+
+```json
+{
+  "permission": {
+    "shared-memory_list_memories": "allow",
+    "shared-memory_retrieve_memory": "allow",
+    "shared-memory_search_memories": "allow",
+    "shared-memory_store_memory": "allow",
+    "shared-memory_delete_memory": "allow"
+  }
+}
+```
+
+| Tool             | Description                             |
+|------------------|-----------------------------------------|
+| `store_memory`   | Store a new memory or reflection        |
+| `retrieve_memory`| Retrieve a specific memory by name      |
+| `search_memories`| Search memories by content              |
+| `list_memories`  | List all stored memories                |
+| `delete_memory`  | Delete a memory by name                 |
+
+Restart opencode after changing the config.
 
 ### Details
 
@@ -75,23 +128,33 @@ npm run dev
 The server will expose MCP tools for memory operations that your agent can
 utilize.
 
-Once running, set your API key and connect your MCP-compatible agent to the
-server.
+Once running, set your API key and connect your MCP-compatible agent to the server.
 
 ## Configuration
 
-| Variable   | Description | Default       |
-|------------|-------------|---------------|
-| `PORT`     | Server port | `3000`        |
-| `NODE_ENV` | Environment | `development` |
+| Variable           | Description              | Default                    |
+|--------------------|--------------------------|----------------------------|
+| `PORT`             | Server port              | `3000`                     |
+| `API_KEY`          | Client authentication key| `none`                     |
+| `DATA_DIR`         | Data storage directory   | `/app/data`                |
+| `MEMORY_FILE_PATH` | Memory file location     | `<DATA_DIR>/memory.jsonl`  |
+| `NODE_ENV`         | Environment              | `development`              |
+
+Every `store_memory` and `delete_memory` call writes the full memory
+graph to disk immediately, so data survives container restarts. The
+memory file lives at [`MEMORY_FILE_PATH`](#configuration)
+(default `<DATA_DIR>/memory.jsonl`); mounting a volume at `DATA_DIR`
+persists it across container replacement.
 
 ## API Reference
 
 The server provides the following MCP tools:
 
-- `store_memory` - Store a new memory/reflection
-- `retrieve_memory` - Retrieve memories by query
+- `store_memory` - Store a new memory or reflection
+- `retrieve_memory` - Retrieve a specific memory by name
+- `search_memories` - Search memories by content or tags
 - `list_memories` - List all stored memories
+- `delete_memory` - Delete a memory by name
 
 ## Contributing
 
