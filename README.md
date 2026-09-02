@@ -149,19 +149,30 @@ Once running, set your API key and connect your MCP-compatible agent to the serv
 
 ## Configuration
 
-| Variable           | Description              | Default                    |
-|--------------------|--------------------------|----------------------------|
-| `PORT`             | Server port              | `3000`                     |
-| `API_KEY`          | Client authentication key| `none`                     |
-| `DATA_DIR`         | Data storage directory   | `/app/data`                |
-| `MEMORY_FILE_PATH` | Memory file location     | `<DATA_DIR>/memory.jsonl`  |
-| `NODE_ENV`         | Environment              | `development`              |
+| Variable           | Description                | Default                   |
+| ------------------ | -------------------------- | ------------------------- |
+| `PORT`             | Server port                | `3000`                    |
+| `API_KEY`          | Client authentication key  | `none`                    |
+| `DATA_DIR`         | Data storage directory     | `/app/data`               |
+| `MEMORY_FILE_PATH` | Memory file location       | `<DATA_DIR>/memory.jsonl` |
+| `LOG_LEVEL`        | Log verbosity (info/debug) | `info`                    |
+| `NODE_ENV`         | Environment                | `development`             |
 
 Every `store_memory` and `delete_memory` call writes the full memory
 graph to disk immediately, so data survives container restarts. The
 memory file lives at [`MEMORY_FILE_PATH`](#configuration)
 (default `<DATA_DIR>/memory.jsonl`); mounting a volume at `DATA_DIR`
 persists it across container replacement.
+
+### Logging
+
+The server logs to stdout (captured by `docker logs`). At `info` level
+(default) it reports the memory restore summary at startup, each
+`store_memory` / `delete_memory` write, and client session connect and
+disconnect (session ID and client IP). Set `LOG_LEVEL=debug` to also log
+each HTTP request (method, path, status, duration). Client IPs are
+resolved from the `X-Forwarded-For` header when running behind a
+reverse proxy.
 
 ## API Reference
 

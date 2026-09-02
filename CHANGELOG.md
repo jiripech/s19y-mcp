@@ -9,6 +9,25 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
 
 No unreleased changes yet.
 
+## [0.3.0] - 2026-09-02
+
+### Added (0.3.0)
+
+- Startup logging: number of memories and relations restored from the
+  memory file, and the resolved file path
+- Write logging on `store_memory` and `delete_memory`
+- Session logging: new client connections show session ID and client IP,
+  disconnects report the active session count
+- Optional `LOG_LEVEL` environment variable (`debug` for per-request
+  logging, default `info`)
+
+### Changed (0.3.0)
+
+- Memory graph is now loaded once at startup and shared across client
+  sessions instead of being reloaded per connection
+- Trust proxy headers so client IPs are correct when behind a reverse
+  proxy
+
 ## [0.2.0] - 2026-09-02
 
 ### Added (0.2.0)
@@ -74,7 +93,8 @@ Initial release of the S19y MCP Server with the following features:
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html
-[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.2.0...HEAD
+[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/jiripech/s19y-mcp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/jiripech/s19y-mcp/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/jiripech/s19y-mcp/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/jiripech/s19y-mcp/compare/v0.1.0...v0.1.1
