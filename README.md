@@ -98,15 +98,32 @@ allow them in the opencode `permission` block:
 }
 ```
 
-| Tool             | Description                             |
-|------------------|-----------------------------------------|
-| `store_memory`   | Store a new memory or reflection        |
-| `retrieve_memory`| Retrieve a specific memory by name      |
-| `search_memories`| Search memories by content              |
-| `list_memories`  | List all stored memories                |
-| `delete_memory`  | Delete a memory by name                 |
+| Tool              | Description                                          |
+| ----------------- | ---------------------------------------------------- |
+| `store_memory`    | Store a new memory or reflection (optional `source`) |
+| `retrieve_memory` | Retrieve a specific memory by name                   |
+| `search_memories` | Search memories (optional `source` filter)           |
+| `list_memories`   | List all stored memories (optional `source` filter)  |
+| `delete_memory`   | Delete a memory by name                              |
 
 Restart opencode after changing the config.
+
+### Memory attribution
+
+All agents share one memory pool. To attribute a memory to an agent,
+pass an optional `source` to `store_memory`; the server stamps it with
+a `source: <value>` tag. Both `search_memories` and `list_memories`
+accept an optional `source` to filter results to one agent:
+
+```json
+{
+  "source": "agent-X"
+}
+```
+
+Attribution keeps the store shared while making it filterable. It is an
+explicit design choice over per-agent isolation: shared memories can be
+searched across all agents, or narrowed to a single contributor.
 
 ### Details
 
@@ -150,10 +167,10 @@ persists it across container replacement.
 
 The server provides the following MCP tools:
 
-- `store_memory` - Store a new memory or reflection
+- `store_memory` - Store a new memory (optional `source` for attribution)
 - `retrieve_memory` - Retrieve a specific memory by name
-- `search_memories` - Search memories by content or tags
-- `list_memories` - List all stored memories
+- `search_memories` - Search memories, optionally filtered by `source`
+- `list_memories` - List all memories, optionally filtered by `source`
 - `delete_memory` - Delete a memory by name
 
 ## Contributing
@@ -175,7 +192,9 @@ Third-party components are listed in
 
 ## Further reading
 
-This software builds on the **Blackboard architecture** and insights from the study _[Generative Agents: Interactive Simulacra of Human Behavior_ (Park et al., 2023)](https://arxiv.org/html/2304.03442v2).
+This software builds on the **Blackboard architecture** and insights from
+the study _[Generative Agents: Interactive Simulacra of Human Behavior_
+(Park et al., 2023)](https://arxiv.org/html/2304.03442v2).
 
 ## Support
 

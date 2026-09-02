@@ -17,7 +17,7 @@ async function resolveMemoryPath() {
 export async function createServer() {
   const server = new McpServer({
     name: 's19y-memory',
-    version: '0.1.2'
+    version: '0.2.0'
   })
 
   const memoryPath = await resolveMemoryPath()
@@ -29,14 +29,19 @@ export async function createServer() {
     {
       content: z.string().describe('The memory content to store'),
       tags: z.array(z.string()).optional().describe('Optional tags for categorization'),
+      source: z.string().optional().describe('Optional agent/source identifier to attribute this memory'),
       importance: z.number().min(1).max(10).optional().describe('Importance level 1-10')
     },
-    async ({ content, tags = [], importance = 5 }) => {
+    async ({ content, tags = [], source, importance = 5 }) => {
       const entityName = `memory_${Date.now()}`
+      const observations = [content, `importance: ${importance}`, `tags: ${tags.join(', ')}`]
+      if (source) {
+        observations.push(`source: ${source}`)
+      }
       await manager.createEntities([{
         name: entityName,
         entityType: 'memory',
-        observations: [content, `importance: ${importance}`, `tags: ${tags.join(', ')}`]
+        observations
       }])
       return {
         content: [{ type: 'text', text: JSON.stringify({ success: true, name: entityName }) }]
@@ -68,10 +73,16 @@ export async function createServer() {
     'search_memories',
     'Search memories by content or tags',
     {
-      query: z.string().describe('Search query to match against memory content')
+      query: z.string().describe('Search query to match against memory content'),
+      source: z.string().optional().describe('Only return memories attributed to this agent/source')
     },
-    async ({ query }) => {
+    async ({ query, source }) => {
       const graph = await manager.searchNodes(query)
+      if (source) {
+        graph.entities = graph.entities.filter(e =>
+          e.observations.some(o => o === `source: ${source}`)
+        )
+      }
       return {
         content: [{ type: 'text', text: JSON.stringify({ success: true, results: graph }) }]
       }
@@ -81,9 +92,16 @@ export async function createServer() {
   server.tool(
     'list_memories',
     'List all stored memories',
-    {},
-    async () => {
+    {
+      source: z.string().optional().describe('Only return memories attributed to this agent/source')
+    },
+    async ({ source }) => {
       const graph = await manager.readGraph()
+      if (source) {
+        graph.entities = graph.entities.filter(e =>
+          e.observations.some(o => o === `source: ${source}`)
+        )
+      }
       return {
         content: [{ type: 'text', text: JSON.stringify({ success: true, graph }) }]
       }

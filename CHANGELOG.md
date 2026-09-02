@@ -9,6 +9,16 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
 
 No unreleased changes yet.
 
+## [0.2.0] - 2026-09-02
+
+### Added (0.2.0)
+
+- Optional `source` parameter on `store_memory` attributes a memory
+  to a specific agent
+- Optional `source` filter on `search_memories` and `list_memories`
+  narrows results to a single contributing agent
+- Document the shared-pool attribution model in `README.md`
+
 ## [0.1.2] - 2026-09-01
 
 ### Fixed (0.1.2)
@@ -64,7 +74,8 @@ Initial release of the S19y MCP Server with the following features:
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html
-[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.1.2...HEAD
+[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/jiripech/s19y-mcp/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/jiripech/s19y-mcp/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/jiripech/s19y-mcp/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/jiripech/s19y-mcp/releases/tag/v0.1.0
