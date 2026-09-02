@@ -13,6 +13,7 @@ RUN npm ci --omit=dev \
 # Copy application source
 COPY server.mjs .
 COPY memory-server.mjs .
+COPY logger.mjs .
 COPY entrypoint.sh .
 RUN chmod +x entrypoint.sh
 

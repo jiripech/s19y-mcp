@@ -3,6 +3,7 @@ import path from 'node:path'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { KnowledgeGraphManager } from '@modelcontextprotocol/server-memory/dist/index.js'
 import { z } from 'zod'
+import { logger } from './logger.mjs'
 
 async function resolveMemoryPath() {
   if (process.env.MEMORY_FILE_PATH) {
@@ -14,14 +15,24 @@ async function resolveMemoryPath() {
   return path.join(dataDir, 'memory.jsonl')
 }
 
-export async function createServer() {
-  const server = new McpServer({
-    name: 's19y-memory',
-    version: '0.2.0'
-  })
-
+export async function createManager() {
   const memoryPath = await resolveMemoryPath()
   const manager = new KnowledgeGraphManager(memoryPath)
+  const graph = await manager.readGraph()
+  logger.info(`Loaded ${graph.entities.length} memories and ${graph.relations.length} relations from ${memoryPath}`)
+  return manager
+}
+
+export async function createServer(manager) {
+  if (!manager) {
+    const memoryPath = await resolveMemoryPath()
+    manager = new KnowledgeGraphManager(memoryPath)
+  }
+
+  const server = new McpServer({
+    name: 's19y-memory',
+    version: '0.3.0'
+  })
 
   server.tool(
     'store_memory',
@@ -43,6 +54,7 @@ export async function createServer() {
         entityType: 'memory',
         observations
       }])
+      logger.info(`Stored memory ${entityName} (importance ${importance}${source ? `, source ${source}` : ''})`)
       return {
         content: [{ type: 'text', text: JSON.stringify({ success: true, name: entityName }) }]
       }
@@ -116,6 +128,7 @@ export async function createServer() {
     },
     async ({ name }) => {
       await manager.deleteEntities([name])
+      logger.info(`Deleted memory ${name}`)
       return {
         content: [{ type: 'text', text: JSON.stringify({ success: true, deleted: name }) }]
       }
