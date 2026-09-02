@@ -97,6 +97,13 @@ build without pushing.
   - `DOCKER_USERNAME`: Docker Hub username
   - `DOCKER_TOKEN`: Docker Hub access token
 
+**Caveat:** the Docker Hub repository must have **tag immutability
+disabled** (default). Versioned releases push both `<version>` and
+`latest` tags to the same manifest; if immutability is enabled, the
+existing `latest` tag cannot be re-pointed and the push fails with
+`denied: ... cannot be updated due to immutability settings`. Keep
+tags mutable for `latest` to track releases.
+
 ## Releases / Versioning
 
 - Keep `CHANGELOG.md` up to date and in [Keep a Changelog][kac] format.
