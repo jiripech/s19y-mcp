@@ -9,6 +9,20 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
 
 No unreleased changes yet.
 
+## [0.4.0] - 2026-09-02
+
+### Added (0.4.0)
+
+- Streamable HTTP transport on `/mcp` endpoint (MCP spec 2025-03-26)
+- Session resumability and `Mcp-Session-Id` header support
+- Both transports coexist: legacy SSE on `/sse` and Streamable HTTP
+  on `/mcp` — clients can use either endpoint
+
+### Changed (0.4.0)
+
+- Express JSON body parser enabled for Streamable HTTP requests
+- Session logging now includes transport type (SSE or Streamable HTTP)
+
 ## [0.3.0] - 2026-09-02
 
 ### Added (0.3.0)
@@ -93,7 +107,8 @@ Initial release of the S19y MCP Server with the following features:
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html
-[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.3.0...HEAD
+[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/jiripech/s19y-mcp/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/jiripech/s19y-mcp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/jiripech/s19y-mcp/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/jiripech/s19y-mcp/compare/v0.1.1...v0.1.2

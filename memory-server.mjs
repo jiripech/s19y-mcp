@@ -31,7 +31,7 @@ export async function createServer(manager) {
 
   const server = new McpServer({
     name: 's19y-memory',
-    version: '0.3.0'
+    version: '0.4.0'
   })
 
   server.tool(

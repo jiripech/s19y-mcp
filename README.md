@@ -64,16 +64,17 @@ DOCKER_NAMESPACE=your-user DOCKER_TAG=1.0.0 ./scripts/build.sh
 
 ### Configure opencode client
 
-The server speaks MCP over SSE
-([Streamable HTTP](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports)
-or SSE). Add it to your opencode config:
+The server speaks MCP over both
+[Streamable HTTP](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports)
+(`/mcp`) and legacy SSE (`/sse`). Streamable HTTP is recommended.
+Add it to your opencode config:
 
 ```json
 {
   "mcp": {
     "shared-memory": {
       "type": "remote",
-      "url": "http://localhost:3000/sse",
+      "url": "http://localhost:3000/mcp",
       "headers": {
         "X-API-Key": "your-api-key-here"
       }
