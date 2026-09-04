@@ -11,8 +11,15 @@ async function resolveMemoryPath() {
     return process.env.MEMORY_FILE_PATH
   }
   const dataDir = process.env.DATA_DIR || '/app/data'
-  await mkdir(dataDir, { recursive: true })
-  return path.join(dataDir, 'memory.jsonl')
+  try {
+    await mkdir(dataDir, { recursive: true })
+    return path.join(dataDir, 'memory.jsonl')
+  } catch {
+    const fallbackDir = 'data'
+    logger.warn(`Cannot create ${dataDir}, falling back to ${fallbackDir}`)
+    await mkdir(fallbackDir, { recursive: true })
+    return path.join(fallbackDir, 'memory.jsonl')
+  }
 }
 
 export async function createManager() {
@@ -31,19 +38,52 @@ export async function createServer(manager) {
 
   const server = new McpServer({
     name: 's19y-memory',
-    version: '0.4.0'
+    version: '0.7.0'
   })
 
   server.tool(
     'store_memory',
     'Store a new memory or reflection',
     {
-      content: z.string().describe('The memory content to store'),
+      memories: z.array(z.object({
+        content: z.string().describe('The memory content to store'),
+        tags: z.array(z.string()).optional().describe('Optional tags for categorization'),
+        source: z.string().optional().describe('Optional agent/source identifier to attribute this memory'),
+        importance: z.number().min(1).max(10).optional().describe('Importance level 1-10')
+      })).optional().describe('Batch of memories to store'),
+      content: z.string().optional().describe('The memory content to store'),
       tags: z.array(z.string()).optional().describe('Optional tags for categorization'),
       source: z.string().optional().describe('Optional agent/source identifier to attribute this memory'),
       importance: z.number().min(1).max(10).optional().describe('Importance level 1-10')
     },
-    async ({ content, tags = [], source, importance = 5 }) => {
+    async (args) => {
+      if (Array.isArray(args.memories)) {
+        const results = []
+        for (const mem of args.memories) {
+          const entityName = `memory_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+          const tags = mem.tags || []
+          const importance = mem.importance ?? 5
+          const observations = [mem.content, `importance: ${importance}`, `tags: ${tags.join(', ')}`]
+          if (mem.source) {
+            observations.push(`source: ${mem.source}`)
+          }
+          try {
+            await manager.createEntities([{
+              name: entityName,
+              entityType: 'memory',
+              observations
+            }])
+            logger.info(`Stored memory ${entityName} (importance ${importance}${mem.source ? `, source ${mem.source}` : ''})`)
+            results.push({ name: entityName, success: true, message: 'Memory stored successfully' })
+          } catch (err) {
+            results.push({ name: entityName, success: false, message: err.message })
+          }
+        }
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: true, results }) }]
+        }
+      }
+      const { content, tags = [], source, importance = 5 } = args
       const entityName = `memory_${Date.now()}`
       const observations = [content, `importance: ${importance}`, `tags: ${tags.join(', ')}`]
       if (source) {
@@ -57,6 +97,68 @@ export async function createServer(manager) {
       logger.info(`Stored memory ${entityName} (importance ${importance}${source ? `, source ${source}` : ''})`)
       return {
         content: [{ type: 'text', text: JSON.stringify({ success: true, name: entityName }) }]
+      }
+    }
+  )
+
+  server.tool(
+    'update_memory',
+    'Update an existing memory by name',
+    {
+      name: z.string().describe('The memory name to update'),
+      content: z.string().optional().describe('New memory content'),
+      tags: z.array(z.string()).optional().describe('New tags for categorization'),
+      source: z.string().optional().describe('New agent/source identifier'),
+      importance: z.number().min(1).max(10).optional().describe('New importance level 1-10')
+    },
+    async ({ name, content, tags, source, importance }) => {
+      const graph = await manager.openNodes([name])
+      if (graph.entities.length === 0) {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'Memory not found' }) }],
+          isError: true
+        }
+      }
+      const entity = graph.entities[0]
+      let currentContent = ''
+      let currentImportance = 5
+      let currentTags = []
+      let currentSource = undefined
+      for (const obs of entity.observations) {
+        const impMatch = obs.match(/^importance: (\d+)$/)
+        if (impMatch) {
+          currentImportance = parseInt(impMatch[1])
+          continue
+        }
+        const tagMatch = obs.match(/^tags: (.*)$/)
+        if (tagMatch) {
+          currentTags = tagMatch[1] ? tagMatch[1].split(', ').filter(Boolean) : []
+          continue
+        }
+        const srcMatch = obs.match(/^source: (.+)$/)
+        if (srcMatch) {
+          currentSource = srcMatch[1]
+          continue
+        }
+        currentContent = obs
+      }
+      const mergedContent = content ?? currentContent
+      const mergedImportance = importance ?? currentImportance
+      const mergedTags = tags ?? currentTags
+      const mergedSource = source ?? currentSource
+      const observations = [mergedContent, `importance: ${mergedImportance}`, `tags: ${mergedTags.join(', ')}`]
+      if (mergedSource) {
+        observations.push(`source: ${mergedSource}`)
+      }
+      await manager.deleteEntities([name])
+      await manager.createEntities([{
+        name,
+        entityType: 'memory',
+        observations
+      }])
+      logger.info(`Updated memory ${name} (importance ${mergedImportance}${mergedSource ? `, source ${mergedSource}` : ''})`)
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ success: true, name }) }]
       }
     }
   )
@@ -121,12 +223,78 @@ export async function createServer(manager) {
   )
 
   server.tool(
+    'count_memories',
+    'Count stored memories',
+    {
+      source: z.string().optional().describe('Only count memories attributed to this agent/source')
+    },
+    async ({ source }) => {
+      const graph = await manager.readGraph()
+      let memories = graph.entities.filter(e => e.entityType === 'memory')
+      if (source) {
+        memories = memories.filter(e =>
+          e.observations.some(o => o === `source: ${source}`)
+        )
+      }
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ count: memories.length }) }]
+      }
+    }
+  )
+
+  server.tool(
+    'list_sources',
+    'List all unique sources with memory counts',
+    {},
+    async () => {
+      const graph = await manager.readGraph()
+      const memories = graph.entities.filter(e => e.entityType === 'memory')
+      const sourceCounts = {}
+      for (const entity of memories) {
+        for (const obs of entity.observations) {
+          const srcMatch = obs.match(/^source: (.+)$/)
+          if (srcMatch) {
+            const src = srcMatch[1]
+            sourceCounts[src] = (sourceCounts[src] || 0) + 1
+          }
+        }
+      }
+      const sources = Object.entries(sourceCounts).map(([name, count]) => ({ name, count }))
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ sources }) }]
+      }
+    }
+  )
+
+  server.tool(
     'delete_memory',
     'Delete a memory by name',
     {
-      name: z.string().describe('The memory name to delete')
+      name: z.string().describe('The memory name to delete'),
+      source: z.string().optional().describe('Source identifier to guard against cross-source deletion')
     },
-    async ({ name }) => {
+    async ({ name, source }) => {
+      if (source) {
+        const graph = await manager.openNodes([name])
+        if (graph.entities.length === 0) {
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'Memory not found' }) }],
+            isError: true
+          }
+        }
+        const entity = graph.entities[0]
+        const srcObs = entity.observations.find(o => o.match(/^source: (.+)$/))
+        if (srcObs) {
+          const actualSource = srcObs.replace(/^source: /, '')
+          if (actualSource !== source) {
+            logger.error(`[CRIT] Cross-source delete attempt: session source="${source}" target="${name}" target_source="${actualSource}"`)
+            return {
+              content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'Cannot delete memory attributed to another source' }) }],
+              isError: true
+            }
+          }
+        }
+      }
       await manager.deleteEntities([name])
       logger.info(`Deleted memory ${name}`)
       return {

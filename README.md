@@ -83,7 +83,7 @@ Add it to your opencode config:
 }
 ```
 
-The server exposes five MCP tools, available to agents as
+The server exposes eight MCP tools, available to agents as
 `shared-memory_<tool>`. To let all agents use the shared memory freely,
 allow them in the opencode `permission` block:
 
@@ -91,21 +91,27 @@ allow them in the opencode `permission` block:
 {
   "permission": {
     "shared-memory_list_memories": "allow",
+    "shared-memory_count_memories": "allow",
+    "shared-memory_list_sources": "allow",
     "shared-memory_retrieve_memory": "allow",
     "shared-memory_search_memories": "allow",
     "shared-memory_store_memory": "allow",
+    "shared-memory_update_memory": "allow",
     "shared-memory_delete_memory": "allow"
   }
 }
 ```
 
-| Tool              | Description                                          |
-| ----------------- | ---------------------------------------------------- |
-| `store_memory`    | Store a new memory or reflection (optional `source`) |
-| `retrieve_memory` | Retrieve a specific memory by name                   |
-| `search_memories` | Search memories (optional `source` filter)           |
-| `list_memories`   | List all stored memories (optional `source` filter)  |
-| `delete_memory`   | Delete a memory by name                              |
+| Tool              | Description                                           |
+| ----------------- | ----------------------------------------------------- |
+| `store_memory`    | Store memories (optional `source`, batch `memories`)  |
+| `update_memory`   | Update an existing memory (content, tags, source)     |
+| `retrieve_memory` | Retrieve a specific memory by name                    |
+| `search_memories` | Search memories (optional `source` filter)            |
+| `list_memories`   | List all stored memories (optional `source` filter)   |
+| `count_memories`  | Count stored memories (optional `source` filter)      |
+| `list_sources`    | List all unique sources with memory counts            |
+| `delete_memory`   | Delete a memory (optional `source` guard)             |
 
 Restart opencode after changing the config.
 
@@ -148,16 +154,49 @@ utilize.
 
 Once running, set your API key and connect your MCP-compatible agent to the server.
 
+Each MCP session is assigned a random agent codename (e.g. "Agent Fox")
+shown in connect and disconnect logs. Look up the codename of a session
+with `GET /session` (pass the `Mcp-Session-Id` header or a `sessionId`
+query parameter). Codenames are released back to the pool when the
+session closes.
+
+Sessions are held in memory. After a server restart every client's
+session is gone; requests carrying a stale session ID are answered
+with HTTP 404 (`Session not found`), the MCP-standard signal for a
+client to re-initialize and open a fresh session. Spec-compliant
+clients such as opencode recover automatically.
+
+## Memory browser
+
+The server ships a memory browser PWA (vanilla JS, Liquid Glass UI)
+served at `/browser.app`. Open it in a browser and register a passkey
+(WebAuthn/FIDO2) to sign in:
+
+- The first registered user becomes the superuser; any further
+  registration needs the `REGISTRATION_TOKEN` value
+- The superuser can list and delete users, change the registration
+  token, and create, edit, or delete any memory
+- Browser users and passkeys persist in `users.json` inside the data
+  directory (`/app/data`), next to the memory file
+
 ## Configuration
 
-| Variable           | Description                | Default                   |
-| ------------------ | -------------------------- | ------------------------- |
-| `PORT`             | Server port                | `3000`                    |
-| `API_KEY`          | Client authentication key  | `none`                    |
-| `DATA_DIR`         | Data storage directory     | `/app/data`               |
-| `MEMORY_FILE_PATH` | Memory file location       | `<DATA_DIR>/memory.jsonl` |
-| `LOG_LEVEL`        | Log verbosity (info/debug) | `info`                    |
-| `NODE_ENV`         | Environment                | `development`             |
+| Variable             | Description              | Default                   |
+| -------------------- | ------------------------ | ------------------------- |
+| `PORT`               | Server port              | `3000`                    |
+| `API_KEY`            | MCP client auth key      | `none`                    |
+| `DATA_DIR`           | Data storage directory   | `/app/data`               |
+| `MEMORY_FILE_PATH`   | Memory file location     | `<DATA_DIR>/memory.jsonl` |
+| `LOG_LEVEL`          | Log level (info/debug)   | `info`                    |
+| `NODE_ENV`           | Environment              | `development`             |
+| `REGISTRATION_TOKEN` | Registration token       | `none`                    |
+| `BROWSER_HOSTNAME`   | WebAuthn RP ID           | server hostname           |
+| `BROWSER_SCHEME`     | WebAuthn scheme          | `http`                    |
+
+`REGISTRATION_TOKEN` is required to register browser users; the first
+user can register without it. `BROWSER_HOSTNAME` is the WebAuthn RP ID
+(default: the server hostname). `BROWSER_SCHEME` is the scheme
+advertised to passkeys (`http` or `https`, default `http`).
 
 Every `store_memory` and `delete_memory` call writes the full memory
 graph to disk immediately, so data survives container restarts. The
@@ -179,11 +218,14 @@ reverse proxy.
 
 The server provides the following MCP tools:
 
-- `store_memory` - Store a new memory (optional `source` for attribution)
+- `store_memory` - Store memories (optional `source`, batch mode)
+- `update_memory` - Update an existing memory by name
 - `retrieve_memory` - Retrieve a specific memory by name
 - `search_memories` - Search memories, optionally filtered by `source`
 - `list_memories` - List all memories, optionally filtered by `source`
-- `delete_memory` - Delete a memory by name
+- `count_memories` - Count memories, optionally filtered by `source`
+- `list_sources` - List all unique sources with memory counts
+- `delete_memory` - Delete a memory (optional `source` guard)
 
 ## Contributing
 

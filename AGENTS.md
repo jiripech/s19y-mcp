@@ -120,11 +120,14 @@ tags mutable for `latest` to track releases.
 
 ## Environment Variables
 
-| Variable   | Required | Description                          |
-|------------|----------|--------------------------------------|
-| `PORT`     | No       | Server port (default: 3000)          |
-| `API_KEY`  | Yes      | Authentication key for MCP clients   |
-| `DATA_DIR` | No       | Data storage directory (/app/data)   |
+| Variable             | Required | Description                               |
+|----------------------|----------|-------------------------------------------|
+| `PORT`               | No       | Server port (default: 3000)               |
+| `API_KEY`            | Yes      | Authentication key for MCP clients        |
+| `DATA_DIR`           | No       | Data storage directory (/app/data)        |
+| `REGISTRATION_TOKEN` | No       | Registration token for browser users      |
+| `BROWSER_HOSTNAME`   | No       | WebAuthn RP ID (default: server hostname) |
+| `BROWSER_SCHEME`     | No       | WebAuthn scheme (http/https)              |
 
 ## Markdown Rules
 

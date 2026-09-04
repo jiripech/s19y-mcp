@@ -3,7 +3,9 @@ import { randomUUID } from 'node:crypto'
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { createManager, createServer } from './memory-server.mjs'
+import { createBrowserRouter } from './browser-routes.mjs'
 import { logger } from './logger.mjs'
+import { names } from './names.mjs'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -14,7 +16,39 @@ app.set('trust proxy', true)
 app.use(express.json())
 
 const sessions = new Map()
+const usedNames = new Set()
 const manager = await createManager()
+
+const randomName = () => {
+  const unused = names.filter(n => !usedNames.has(n))
+  if (unused.length === 0) {
+    return names[Math.floor(Math.random() * names.length)]
+  }
+  return unused[Math.floor(Math.random() * unused.length)]
+}
+
+const MAX_AGENT_NAME_LENGTH = 64
+
+const assignName = (req) => {
+  const requested = (req.headers['x-agent-name'] || '')
+    .toString()
+    .replace(/[\x00-\x1f\x7f]/g, '')
+    .trim()
+    .slice(0, MAX_AGENT_NAME_LENGTH)
+  if (requested) {
+    if (usedNames.has(requested)) {
+      logger.warn(`Requested agent name "${requested}" is already in use, assigning a random codename`)
+      const pick = randomName()
+      usedNames.add(pick)
+      return pick
+    }
+    usedNames.add(requested)
+    return requested
+  }
+  const pick = randomName()
+  usedNames.add(pick)
+  return pick
+}
 
 const authMiddleware = (req, res, next) => {
   const clientKey = req.headers['x-api-key']
@@ -33,16 +67,34 @@ app.use((req, res, next) => {
   next()
 })
 
+app.get('/session', authMiddleware, async (req, res) => {
+  const sessionId = req.headers['mcp-session-id'] || req.query.sessionId
+  if (!sessionId) {
+    return res.status(400).json({ error: 'Mcp-Session-Id header or sessionId query param required' })
+  }
+  const session = sessions.get(sessionId)
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found' })
+  }
+  res.json({
+    name: session.name,
+    sessionId,
+    transport: session.transport instanceof StreamableHTTPServerTransport ? 'streamable-http' : 'sse'
+  })
+})
+
 app.get('/sse', authMiddleware, async (req, res) => {
   const transport = new SSEServerTransport('/messages', res)
   const server = await createServer(manager)
+  const name = assignName()
 
-  sessions.set(transport.sessionId, { transport, server })
-  logger.info(`Session ${transport.sessionId} connected from ${req.ip} (SSE)`)
+  sessions.set(transport.sessionId, { transport, server, name })
+  logger.info(`${name} (${transport.sessionId}) connected from ${req.ip} (SSE)`)
 
   req.on('close', () => {
     sessions.delete(transport.sessionId)
-    logger.info(`Session ${transport.sessionId} closed (active: ${sessions.size})`)
+    usedNames.delete(name)
+    logger.info(`${name} (${transport.sessionId}) closed (active: ${sessions.size})`)
   })
 
   await server.connect(transport)
@@ -76,15 +128,23 @@ app.all('/mcp', authMiddleware, async (req, res) => {
       await transport.handleRequest(req, res, req.body)
 
       const sid = transport.sessionId
-      sessions.set(sid, { transport, server })
-      logger.info(`Session ${sid} connected from ${req.ip} (Streamable HTTP)`)
+      const name = assignName()
+      sessions.set(sid, { transport, server, name })
+      logger.info(`${name} (${sid}) connected from ${req.ip} (Streamable HTTP)`)
 
       transport.onclose = () => {
         sessions.delete(sid)
-        logger.info(`Session ${sid} closed (active: ${sessions.size})`)
+        usedNames.delete(name)
+        logger.info(`${name} (${sid}) closed (active: ${sessions.size})`)
       }
 
       return
+    } else if (sessionId) {
+      return res.status(404).json({
+        jsonrpc: '2.0',
+        error: { code: -32001, message: 'Session not found' },
+        id: null
+      })
     } else {
       return res.status(400).json({ error: 'Bad Request: Mcp-Session-Id header is required' })
     }
@@ -97,6 +157,8 @@ app.all('/mcp', authMiddleware, async (req, res) => {
     }
   }
 })
+
+app.use('/browser.app', createBrowserRouter(manager))
 
 app.listen(PORT, () => {
   logger.info(`MCP Memory Server running on port ${PORT} with authentication enabled.`)

@@ -1,6 +1,6 @@
 {
   "name": "s19y-mcp",
-  "version": "0.4.0",
+  "version": "0.7.0",
   "description": "Self Reflexion Memory MCP Server built with agent for agents",
   "type": "module",
   "main": "server.mjs",
@@ -20,6 +20,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@modelcontextprotocol/server-memory": "^2026.7.4",
+    "@simplewebauthn/server": "^14.0.0",
     "express": "^4.18.0"
   },
   "overrides": {

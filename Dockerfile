@@ -14,6 +14,11 @@ RUN npm ci --omit=dev \
 COPY server.mjs .
 COPY memory-server.mjs .
 COPY logger.mjs .
+COPY names.mjs .
+COPY webauthn.mjs .
+COPY browser-sessions.mjs .
+COPY browser-routes.mjs .
+COPY browser ./browser/
 COPY entrypoint.sh .
 RUN chmod +x entrypoint.sh
 

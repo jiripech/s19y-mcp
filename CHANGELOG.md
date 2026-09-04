@@ -9,6 +9,51 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
 
 No unreleased changes yet.
 
+## [0.7.0] - 2026-09-03
+
+### Added (0.7.0)
+
+- Memory browser PWA at `/browser.app` (vanilla JS, Liquid Glass UI)
+- WebAuthn/FIDO2 passkey registration and login: the first user
+  becomes superuser, further registration is gated by the
+  `REGISTRATION_TOKEN` environment variable
+- Superuser management in the browser: list and delete users, change
+  the registration token, and create, edit, or delete any memory
+- `REGISTRATION_TOKEN`, `BROWSER_HOSTNAME`, and `BROWSER_SCHEME`
+  environment variables
+
+### Changed (0.7.0)
+
+- Users and WebAuthn credentials are stored in `/app/data/users.json`
+
+### Fixed (0.7.0)
+
+- Requests with an unknown session ID now return HTTP 404
+  (`Session not found`) instead of 400, so spec-compliant clients
+  re-initialize automatically after a server restart
+- Session codenames are released back to the pool when a session
+  closes instead of leaking
+
+## [0.6.0] - 2026-09-03
+
+### Added (0.6.0)
+
+- Agent name assignment: each MCP session gets a random codename
+  (e.g. "Agent Fox") shown in connect and disconnect logs
+- `GET /session` endpoint to discover the agent name of a session
+
+## [0.5.0] - 2026-09-03
+
+### Added (0.5.0)
+
+- Batch mode for `store_memory` via a `memories` array argument
+- `update_memory` tool to update content, tags, source, and
+  importance of an existing memory
+- `count_memories` tool with optional `source` filter
+- `list_sources` tool listing unique sources with memory counts
+- Deletion guard on `delete_memory`: optional `source` argument
+  blocks cross-source deletions and logs them with `[CRIT]`
+
 ## [0.4.0] - 2026-09-02
 
 ### Added (0.4.0)
@@ -107,7 +152,10 @@ Initial release of the S19y MCP Server with the following features:
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html
-[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.4.0...HEAD
+[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/jiripech/s19y-mcp/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/jiripech/s19y-mcp/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/jiripech/s19y-mcp/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/jiripech/s19y-mcp/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/jiripech/s19y-mcp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/jiripech/s19y-mcp/compare/v0.1.2...v0.2.0
