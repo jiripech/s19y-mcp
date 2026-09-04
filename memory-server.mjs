@@ -38,7 +38,13 @@ export async function createServer(manager) {
 
   const server = new McpServer({
     name: 's19y-memory',
-    version: '0.7.0'
+    version: '0.8.0'
+  }, {
+    instructions: 'Shared memory pool for multiple agents. Each session ' +
+      'is assigned a codename shown in server logs; a stable name can be ' +
+      'set via the X-Agent-Name request header in the client MCP config ' +
+      '(e.g. opencode "headers"). Search with search_memories before ' +
+      'storing to avoid duplicates.'
   })
 
   server.tool(

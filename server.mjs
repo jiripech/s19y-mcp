@@ -86,7 +86,7 @@ app.get('/session', authMiddleware, async (req, res) => {
 app.get('/sse', authMiddleware, async (req, res) => {
   const transport = new SSEServerTransport('/messages', res)
   const server = await createServer(manager)
-  const name = assignName()
+      const name = assignName(req)
 
   sessions.set(transport.sessionId, { transport, server, name })
   logger.info(`${name} (${transport.sessionId}) connected from ${req.ip} (SSE)`)
@@ -128,7 +128,7 @@ app.all('/mcp', authMiddleware, async (req, res) => {
       await transport.handleRequest(req, res, req.body)
 
       const sid = transport.sessionId
-      const name = assignName()
+  const name = assignName(req)
       sessions.set(sid, { transport, server, name })
       logger.info(`${name} (${sid}) connected from ${req.ip} (Streamable HTTP)`)
 

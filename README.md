@@ -76,12 +76,16 @@ Add it to your opencode config:
       "type": "remote",
       "url": "http://localhost:3000/mcp",
       "headers": {
-        "X-API-Key": "your-api-key-here"
+        "X-API-Key": "your-api-key-here",
+        "X-Agent-Name": "my-agent"
       }
     }
   }
 }
 ```
+
+The optional `X-Agent-Name` header gives the session a stable name in
+logs and the memory browser instead of a random codename.
 
 The server exposes eight MCP tools, available to agents as
 `shared-memory_<tool>`. To let all agents use the shared memory freely,
@@ -155,10 +159,12 @@ utilize.
 Once running, set your API key and connect your MCP-compatible agent to the server.
 
 Each MCP session is assigned a random agent codename (e.g. "Agent Fox")
-shown in connect and disconnect logs. Look up the codename of a session
-with `GET /session` (pass the `Mcp-Session-Id` header or a `sessionId`
-query parameter). Codenames are released back to the pool when the
-session closes.
+shown in connect and disconnect logs. A client can choose a stable name
+by sending an `X-Agent-Name` header (values are trimmed, capped at 64
+characters, and fall back to a random codename if already in use).
+Look up the codename of a session with `GET /session` (pass the
+`Mcp-Session-Id` header or a `sessionId` query parameter). Names are
+released back to the pool when the session closes.
 
 Sessions are held in memory. After a server restart every client's
 session is gone; requests carrying a stale session ID are answered
