@@ -9,6 +9,16 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
 
 No unreleased changes yet.
 
+## [0.8.2] - 2026-09-04
+
+### Fixed (0.8.2)
+
+- "Register" and "Sign in" links in the memory browser were rendered
+  as plain text (arguments dropped by a UI helper), making account
+  creation impossible; both links now render correctly
+- Bump the browser service worker cache version so deployed clients
+  pick up the fixed app on the next visit
+
 ## [0.8.1] - 2026-09-04
 
 ### Fixed (0.8.1)
@@ -171,7 +181,8 @@ Initial release of the S19y MCP Server with the following features:
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html
-[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.8.1...HEAD
+[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.8.2...HEAD
+[0.8.2]: https://github.com/jiripech/s19y-mcp/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/jiripech/s19y-mcp/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/jiripech/s19y-mcp/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/jiripech/s19y-mcp/compare/v0.6.0...v0.7.0

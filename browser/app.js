@@ -257,7 +257,7 @@ const renderLogin = () => {
     nameInput,
     error,
     submit,
-    el('p', { class: 'alt-link' }, 'No account yet? ', el('a', { href: '#/register' }, 'Register'))
+    el('p', { class: 'alt-link' }, ['No account yet? ', el('a', { href: '#/register' }, 'Register')])
   ])
 
   form.addEventListener('submit', async (event) => {
@@ -314,7 +314,7 @@ const renderRegister = () => {
     el('p', { class: 'hint' }, 'Token is required unless you are the first user.'),
     error,
     submit,
-    el('p', { class: 'alt-link' }, 'Already registered? ', el('a', { href: '#/login' }, 'Sign in'))
+    el('p', { class: 'alt-link' }, ['Already registered? ', el('a', { href: '#/login' }, 'Sign in')])
   ])
 
   form.addEventListener('submit', async (event) => {
