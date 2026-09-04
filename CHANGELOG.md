@@ -9,6 +9,14 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
 
 No unreleased changes yet.
 
+## [0.8.1] - 2026-09-04
+
+### Fixed (0.8.1)
+
+- Suppress Node.js `ExperimentalWarning` noise at startup (Web Crypto
+  API used by the WebAuthn library) via `NODE_OPTIONS` in the image
+  and matching flags in the npm scripts
+
 ## [0.8.0] - 2026-09-04
 
 ### Added (0.8.0)
@@ -163,7 +171,8 @@ Initial release of the S19y MCP Server with the following features:
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html
-[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.8.0...HEAD
+[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/jiripech/s19y-mcp/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/jiripech/s19y-mcp/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/jiripech/s19y-mcp/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/jiripech/s19y-mcp/compare/v0.5.0...v0.6.0

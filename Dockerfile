@@ -26,6 +26,7 @@ RUN chmod +x entrypoint.sh
 ENV PORT=3000
 ENV DATA_DIR=/app/data
 ENV MEMORY_FILE_PATH=/app/data/memory.jsonl
+ENV NODE_OPTIONS=--disable-warning=ExperimentalWarning
 VOLUME /app/data
 
 EXPOSE 3000

@@ -1,12 +1,12 @@
 {
   "name": "s19y-mcp",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Self Reflexion Memory MCP Server built with agent for agents",
   "type": "module",
   "main": "server.mjs",
   "scripts": {
-    "start": "node server.mjs",
-    "dev": "node --watch server.mjs",
+    "start": "node --disable-warning=ExperimentalWarning server.mjs",
+    "dev": "node --watch --disable-warning=ExperimentalWarning server.mjs",
     "test": "node --test tests/*.test.mjs"
   },
   "keywords": [
