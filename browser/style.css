@@ -406,6 +406,12 @@ select.input option {
   border: 1px solid rgba(251, 113, 133, 0.35);
 }
 
+.message.warn {
+  color: #fcd34d;
+  background: rgba(252, 211, 77, 0.1);
+  border: 1px solid rgba(252, 211, 77, 0.3);
+}
+
 .message.success {
   color: #6ee7b7;
   background: rgba(110, 231, 183, 0.1);

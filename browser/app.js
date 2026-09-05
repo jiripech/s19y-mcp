@@ -90,7 +90,18 @@ const importanceClass = (value) => {
   return 'imp-low'
 }
 
+const SECURE_CONTEXT_HINT = 'Passkeys require a secure context (HTTPS or localhost). ' +
+  'This page was loaded over an insecure origin, so the browser blocks WebAuthn. ' +
+  'Serve the memory browser via HTTPS or access it through localhost.'
+
+const assertWebAuthnAvailable = () => {
+  if (!window.isSecureContext || !navigator.credentials || !window.PublicKeyCredential) {
+    throw new Error(SECURE_CONTEXT_HINT)
+  }
+}
+
 const startAuthentication = async (options) => {
+  assertWebAuthnAvailable()
   const publicKey = {
     challenge: b64urlToBytes(options.challenge),
     rpId: options.rpId,
@@ -118,6 +129,7 @@ const startAuthentication = async (options) => {
 }
 
 const startRegistration = async (options, fallbackUserId, fallbackName) => {
+  assertWebAuthnAvailable()
   const publicKey = {
     challenge: b64urlToBytes(options.challenge),
     rp: options.rp,
@@ -251,6 +263,11 @@ const renderLogin = () => {
   const error = el('div', { class: 'message error', hidden: true })
   const submit = el('button', { class: 'btn primary', type: 'submit' }, 'Sign in')
 
+  const warnings = []
+  if (!window.isSecureContext || !navigator.credentials || !window.PublicKeyCredential) {
+    warnings.push(el('div', { class: 'message warn' }, SECURE_CONTEXT_HINT))
+  }
+
   const form = el('form', { class: 'card auth-card' }, [
     el('h1', { class: 'title' }, 'S19y Memory'),
     el('p', { class: 'subtitle' }, 'Sign in with your passkey'),
@@ -284,7 +301,7 @@ const renderLogin = () => {
     }
   })
 
-  render(el('div', { class: 'auth-wrap' }, form))
+  render(el('div', { class: 'auth-wrap' }, [...warnings, form]))
 }
 
 const renderRegister = () => {
@@ -305,6 +322,11 @@ const renderRegister = () => {
   })
   const error = el('div', { class: 'message error', hidden: true })
   const submit = el('button', { class: 'btn primary', type: 'submit' }, 'Create passkey')
+
+  const warnings = []
+  if (!window.isSecureContext || !navigator.credentials || !window.PublicKeyCredential) {
+    warnings.push(el('div', { class: 'message warn' }, SECURE_CONTEXT_HINT))
+  }
 
   const form = el('form', { class: 'card auth-card' }, [
     el('h1', { class: 'title' }, 'S19y Memory'),
@@ -344,7 +366,7 @@ const renderRegister = () => {
     }
   })
 
-  render(el('div', { class: 'auth-wrap' }, form))
+  render(el('div', { class: 'auth-wrap' }, [...warnings, form]))
 }
 
 const renderMemories = () => {

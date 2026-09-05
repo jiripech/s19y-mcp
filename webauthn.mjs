@@ -104,17 +104,18 @@ export const deleteUser = async (userId) => {
 
 export const generateRegistrationOptions = async (name) => {
   const user = await findUserByName(name)
-  if (!user) throw new Error('User not found')
 
-  const excludeCredentials = (user.webauthn || []).map(c => ({
-    id: c.credentialID,
-    transports: c.transports
-  }))
+  const excludeCredentials = user
+    ? (user.webauthn || []).map(c => ({
+        id: c.credentialID,
+        transports: c.transports
+      }))
+    : []
 
   return serverGenRegOpts({
     rpName: 'S19y Memory',
     rpID,
-    userName: user.name,
+    userName: name,
     attestationType: 'none',
     excludeCredentials,
     authenticatorSelection: {

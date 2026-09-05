@@ -84,10 +84,13 @@ app.get('/session', authMiddleware, async (req, res) => {
   })
 })
 
-app.get('/sse', authMiddleware, async (req, res) => {
+const wrap = (fn) => (req, res, next) =>
+  Promise.resolve(fn(req, res, next)).catch(next)
+
+app.get('/sse', authMiddleware, wrap(async (req, res) => {
   const transport = new SSEServerTransport('/messages', res)
   const server = await createServer(manager)
-      const name = assignName(req)
+  const name = assignName(req)
 
   sessions.set(transport.sessionId, { transport, server, name })
   logger.info(`${name} (${transport.sessionId}) connected from ${req.ip} (SSE)`)
@@ -99,9 +102,9 @@ app.get('/sse', authMiddleware, async (req, res) => {
   })
 
   await server.connect(transport)
-})
+}))
 
-app.post('/messages', authMiddleware, async (req, res) => {
+app.post('/messages', authMiddleware, wrap(async (req, res) => {
   const sessionId = req.query.sessionId
   const session = sessions.get(sessionId)
 
@@ -110,7 +113,7 @@ app.post('/messages', authMiddleware, async (req, res) => {
   } else {
     res.status(404).json({ error: 'Session not found or expired' })
   }
-})
+}))
 
 app.all('/mcp', authMiddleware, async (req, res) => {
   try {

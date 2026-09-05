@@ -1,4 +1,5 @@
 import express, { Router } from 'express'
+import { randomUUID } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -64,6 +65,9 @@ function parseMemory(entity) {
 
 export function createBrowserRouter(manager) {
   const router = Router()
+  const wrap = (fn) => (req, res, next) =>
+    Promise.resolve(fn(req, res, next)).catch(next)
+
   const pendingChallenges = new Map()
 
   const requireAuth = (req, res, next) => {
@@ -104,7 +108,7 @@ export function createBrowserRouter(manager) {
 
   router.use(express.static(browserDir))
 
-  router.post('/api/register/begin', async (req, res) => {
+  router.post('/api/register/begin', wrap(async (req, res) => {
     const { name, token } = req.body
     if (!name) {
       return res.status(400).json({ error: 'Name required' })
@@ -119,44 +123,58 @@ export function createBrowserRouter(manager) {
       }
     }
     const existing = await findUserByName(name)
-    if (existing) {
+    if (existing && existing.webauthn && existing.webauthn.length > 0) {
       logger.warn(`Registration rejected for "${name}" from ${req.ip}: name already taken`)
       return res.status(409).json({ error: 'User name already taken' })
     }
-    const user = await createUser(name, isFirstUser ? 'superuser' : 'user')
     const options = await generateRegistrationOptions(name)
-    pendingChallenges.set(user.id, { challenge: options.challenge, createdAt: Date.now() })
+    const challengeId = randomUUID()
+    pendingChallenges.set(challengeId, {
+      challenge: options.challenge,
+      createdAt: Date.now(),
+      name
+    })
     logger.info(`Registration started for "${name}" (${isFirstUser ? 'superuser' : 'user'}) from ${req.ip}`)
-    res.json({ options, userId: user.id })
-  })
+    res.json({ options, userId: challengeId })
+  }))
 
-  router.post('/api/register/finish', async (req, res) => {
+  router.post('/api/register/finish', wrap(async (req, res) => {
     const { userId, response } = req.body
     const pending = takePendingChallenge(userId)
     if (!pending) {
       return res.status(400).json({ error: 'Registration challenge not found or expired' })
     }
+    const data = await loadUsers()
+    const isFirstUser = data.users.length === 0
+    let user = await findUserByName(pending.name)
+    if (user && user.webauthn && user.webauthn.length > 0) {
+      return res.status(409).json({ error: 'User name already taken' })
+    }
+    if (!user) {
+      user = await createUser(pending.name, isFirstUser ? 'superuser' : 'user')
+    }
     let result
     try {
-      result = await verifyRegistration(userId, { challenge: pending.challenge, response })
+      result = await verifyRegistration(user.id, { challenge: pending.challenge, response })
     } catch {
-      logger.warn(`Passkey registration failed for user ${userId} from ${req.ip}`)
+      logger.warn(`Passkey registration failed for "${user.name}" from ${req.ip}`)
+      if (user.webauthn.length === 0) {
+        await deleteUser(user.id)
+      }
       return res.status(400).json({ error: 'Registration verification failed' })
     }
     if (!result.verified) {
-      logger.warn(`Passkey registration failed for user ${userId} from ${req.ip}`)
-      return res.status(400).json({ error: 'Registration verification failed' })
-    }
-    pendingChallenges.delete(userId)
-    const user = await findUserById(userId)
-    if (!user) {
+      logger.warn(`Passkey registration failed for "${user.name}" from ${req.ip}`)
+      if (user.webauthn.length === 0) {
+        await deleteUser(user.id)
+      }
       return res.status(400).json({ error: 'Registration verification failed' })
     }
     logger.info(`User "${user.name}" registered a passkey from ${req.ip}`)
     startSession(res, user)
-  })
+  }))
 
-  router.post('/api/login/begin', async (req, res) => {
+  router.post('/api/login/begin', wrap(async (req, res) => {
     const { name } = req.body
     const user = await findUserByName(name)
     if (!user) {
@@ -169,9 +187,9 @@ export function createBrowserRouter(manager) {
     const options = await generateLoginOptions(name)
     pendingChallenges.set(user.id, { challenge: options.challenge, createdAt: Date.now() })
     res.json({ options, userId: user.id })
-  })
+  }))
 
-  router.post('/api/login/finish', async (req, res) => {
+  router.post('/api/login/finish', wrap(async (req, res) => {
     const { userId, response } = req.body
     const pending = takePendingChallenge(userId)
     if (!pending) {
@@ -195,7 +213,7 @@ export function createBrowserRouter(manager) {
     }
     logger.info(`User "${user.name}" signed in from ${req.ip}`)
     startSession(res, user)
-  })
+  }))
 
   router.post('/api/logout', requireAuth, (req, res) => {
     deleteSession(req.sessionToken)
@@ -215,11 +233,11 @@ export function createBrowserRouter(manager) {
     })
   })
 
-  router.get('/api/users', requireSuperuser, async (req, res) => {
+  router.get('/api/users', requireSuperuser, wrap(async (req, res) => {
     res.json({ users: await listUsers() })
-  })
+  }))
 
-  router.delete('/api/users', requireSuperuser, async (req, res) => {
+  router.delete('/api/users', requireSuperuser, wrap(async (req, res) => {
     const { userId } = req.body
     if (userId === req.session.userId) {
       return res.status(400).json({ error: 'Cannot delete your own account' })
@@ -228,9 +246,9 @@ export function createBrowserRouter(manager) {
     await deleteUser(userId)
     logger.info(`User ${user ? user.name : userId} deleted by ${req.session.userName}`)
     res.json({ success: true })
-  })
+  }))
 
-  router.put('/api/registration-token', requireSuperuser, async (req, res) => {
+  router.put('/api/registration-token', requireSuperuser, wrap(async (req, res) => {
     const { token } = req.body
     if (typeof token !== 'string' || token.length === 0) {
       return res.status(400).json({ error: 'Token must be a non-empty string' })
@@ -241,9 +259,9 @@ export function createBrowserRouter(manager) {
     await setRegistrationToken(token)
     logger.info(`Registration token updated by ${req.session.userName}`)
     res.json({ success: true })
-  })
+  }))
 
-  router.get('/api/memories', requireAuth, async (req, res) => {
+  router.get('/api/memories', requireAuth, wrap(async (req, res) => {
     const graph = await manager.readGraph()
     let memories = graph.entities.filter(e => e.entityType === 'memory')
     if (req.query.source) {
@@ -256,9 +274,9 @@ export function createBrowserRouter(manager) {
     }
     parsed.sort((a, b) => b.name.localeCompare(a.name))
     res.json({ memories: parsed })
-  })
+  }))
 
-  router.post('/api/memories', requireSuperuser, async (req, res) => {
+  router.post('/api/memories', requireSuperuser, wrap(async (req, res) => {
     const { content, tags, source, importance = 5 } = req.body
     const name = `memory_${Date.now()}`
     const observations = [content, `importance: ${importance}`]
@@ -271,9 +289,9 @@ export function createBrowserRouter(manager) {
     await manager.createEntities([{ name, entityType: 'memory', observations }])
     logger.info(`Stored memory ${name} (importance ${importance}${source ? `, source ${source}` : ''})`)
     res.json({ success: true, name })
-  })
+  }))
 
-  router.put('/api/memories/:name', requireSuperuser, async (req, res) => {
+  router.put('/api/memories/:name', requireSuperuser, wrap(async (req, res) => {
     const { name } = req.params
     if (isProtectedMemory(name)) {
       return res.status(403).json({ error: 'This memory is managed by the server and cannot be modified' })
@@ -299,9 +317,9 @@ export function createBrowserRouter(manager) {
     await manager.createEntities([{ name, entityType: 'memory', observations }])
     logger.info(`Updated memory ${name} (importance ${mergedImportance}${mergedSource ? `, source ${mergedSource}` : ''})`)
     res.json({ success: true })
-  })
+  }))
 
-  router.delete('/api/memories/:name', requireSuperuser, async (req, res) => {
+  router.delete('/api/memories/:name', requireSuperuser, wrap(async (req, res) => {
     const { name } = req.params
     if (isProtectedMemory(name)) {
       return res.status(403).json({ error: 'This memory is managed by the server and cannot be deleted' })
@@ -309,6 +327,13 @@ export function createBrowserRouter(manager) {
     await manager.deleteEntities([name])
     logger.info(`Deleted memory ${name}`)
     res.json({ success: true })
+  }))
+
+  router.use((err, req, res, next) => {
+    logger.error(`Browser API error: ${err.message}`)
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Internal server error' })
+    }
   })
 
   return router

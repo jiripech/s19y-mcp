@@ -203,6 +203,19 @@ served at `/browser.app`. Open it in a browser and register a passkey
 - Browser users and passkeys persist in `users.json` inside the data
   directory (`/app/data`), next to the memory file
 
+Passkeys require a **secure context**: the browser only offers
+WebAuthn on HTTPS origins or on `localhost`. Plain HTTP on a LAN IP
+(for example `http://10.0.0.222:12300/browser.app/`) is blocked by the
+browser - the pages warn about this. Options:
+
+- Terminate TLS in your reverse proxy (haproxy, caddy, nginx) and
+  access the browser through the HTTPS hostname; set
+  `BROWSER_SCHEME=https` and `BROWSER_HOSTNAME` to that hostname so
+  WebAuthn origin verification matches
+- For quick local testing, forward the port to your workstation
+  (`ssh -L 12300:localhost:12300 <host>`) and open
+  `http://localhost:12300/browser.app/` with `BROWSER_HOSTNAME=localhost`
+
 ## Configuration
 
 | Variable             | Description              | Default                   |
