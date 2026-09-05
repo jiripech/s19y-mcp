@@ -215,6 +215,10 @@ browser - the pages warn about this. Options:
 - For quick local testing, forward the port to your workstation
   (`ssh -L 12300:localhost:12300 <host>`) and open
   `http://localhost:12300/browser.app/` with `BROWSER_HOSTNAME=localhost`
+- Skip passkeys entirely: set `ADMIN_USER` and sign in on the login
+  page with that username and the 8-character password printed in the
+  server log at startup (single account, superuser rights, intended
+  for trusted networks)
 
 ## Configuration
 
@@ -229,11 +233,15 @@ browser - the pages warn about this. Options:
 | `REGISTRATION_TOKEN` | Registration token       | `none`                    |
 | `BROWSER_HOSTNAME`   | WebAuthn RP ID           | server hostname           |
 | `BROWSER_SCHEME`     | WebAuthn scheme          | `http`                    |
+| `ADMIN_USER`         | Password login user      | `none`                    |
 
 `REGISTRATION_TOKEN` is required to register browser users; the first
 user can register without it. `BROWSER_HOSTNAME` is the WebAuthn RP ID
 (default: the server hostname). `BROWSER_SCHEME` is the scheme
 advertised to passkeys (`http` or `https`, default `http`).
+`ADMIN_USER` enables username/password login for the memory browser
+as a fallback when WebAuthn is unavailable; the 8-character password
+is generated at startup and printed to the log.
 
 Every `store_memory` and `delete_memory` call writes the full memory
 graph to disk immediately, so data survives container restarts. The
@@ -256,6 +264,8 @@ reverse proxy.
 | Event | Level | Details included |
 | ----- | ----- | ---------------- |
 | Memory restore at startup | info | counts and file path |
+| Name pool restore at startup | info | available count, file path |
+| Agent identity claimed | info | picked name, next variant |
 | Memory write or delete | info | memory name, importance, source |
 | MCP session connect / close | info | agent name, session ID, IP, transport |
 | Agent name collision | warn | requested name, fallback |
@@ -266,6 +276,9 @@ reverse proxy.
 | Passkey sign-in / sign-out | info | user name, IP |
 | Passkey verification failure | warn | user ID, IP |
 | Unknown login attempt | warn | requested name, IP |
+| Password sign-in | info | user name, IP |
+| Password login rejected | warn | requested name, IP |
+| Protected memory tamper | error (`[CRIT]`) | memory name, attempt type |
 | User deleted (superuser) | info | target, actor |
 | Registration token changed | info | actor |
 | HTTP request (debug only) | debug | method, path, status, duration |

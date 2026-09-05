@@ -1,5 +1,5 @@
 import express, { Router } from 'express'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -63,7 +63,32 @@ function parseMemory(entity) {
   return { name: entity.name, content, importance, tags, source }
 }
 
-export function createBrowserRouter(manager) {
+export function generateAdminPassword() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+  const bytes = randomBytes(64)
+  let password = ''
+  for (let i = 0; password.length < 8 && i < bytes.length; i++) {
+    if (bytes[i] < 252) {
+      password += chars[bytes[i] % 36]
+    }
+  }
+  while (password.length < 8) {
+    const b = randomBytes(1)[0]
+    if (b < 252) {
+      password += chars[b % 36]
+    }
+  }
+  return password
+}
+
+const passwordMatches = (candidate, expected) => {
+  const a = createHash('sha256').update(candidate || '').digest()
+  const b = createHash('sha256').update(expected || '').digest()
+  return timingSafeEqual(a, b)
+}
+
+export function createBrowserRouter(manager, options = {}) {
+  const { adminUser = null, adminPassword = null } = options
   const router = Router()
   const wrap = (fn) => (req, res, next) =>
     Promise.resolve(fn(req, res, next)).catch(next)
@@ -175,7 +200,20 @@ export function createBrowserRouter(manager) {
   }))
 
   router.post('/api/login/begin', wrap(async (req, res) => {
-    const { name } = req.body
+    const { name, password } = req.body
+    if (!name) {
+      return res.status(400).json({ error: 'Name required' })
+    }
+    if (adminUser && adminPassword && password) {
+      if (name === adminUser && passwordMatches(password, adminPassword)) {
+        logger.info(`User "${adminUser}" signed in with password from ${req.ip}`)
+        const token = createSession('password-admin', adminUser, 'superuser')
+        res.cookie(cookieName, token, cookieOptions)
+        return res.json({ user: { id: 'password-admin', name: adminUser, role: 'superuser' }, passwordLogin: true })
+      }
+      logger.warn(`Password login rejected for "${name}" from ${req.ip}`)
+      return res.status(401).json({ error: 'Invalid username or password' })
+    }
     const user = await findUserByName(name)
     if (!user) {
       logger.warn(`Login rejected from ${req.ip}: unknown user "${name}"`)

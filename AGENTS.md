@@ -128,6 +128,7 @@ tags mutable for `latest` to track releases.
 | `REGISTRATION_TOKEN` | No       | Registration token for browser users      |
 | `BROWSER_HOSTNAME`   | No       | WebAuthn RP ID (default: server hostname) |
 | `BROWSER_SCHEME`     | No       | WebAuthn scheme (http/https)              |
+| `ADMIN_USER`         | No       | Password login user for the browser       |
 
 ## Markdown Rules
 

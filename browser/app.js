@@ -92,7 +92,9 @@ const importanceClass = (value) => {
 
 const SECURE_CONTEXT_HINT = 'Passkeys require a secure context (HTTPS or localhost). ' +
   'This page was loaded over an insecure origin, so the browser blocks WebAuthn. ' +
-  'Serve the memory browser via HTTPS or access it through localhost.'
+  'Serve the memory browser via HTTPS or access it through localhost. ' +
+  'If the server was started with ADMIN_USER, you can sign in with that ' +
+  'username and the generated password from the server logs instead.'
 
 const assertWebAuthnAvailable = () => {
   if (!window.isSecureContext || !navigator.credentials || !window.PublicKeyCredential) {
@@ -260,6 +262,13 @@ const renderLogin = () => {
     autocomplete: 'username webauthn',
     required: true
   })
+  const passwordInput = el('input', {
+    class: 'input',
+    type: 'password',
+    name: 'password',
+    placeholder: 'Password (optional)',
+    autocomplete: 'current-password'
+  })
   const error = el('div', { class: 'message error', hidden: true })
   const submit = el('button', { class: 'btn primary', type: 'submit' }, 'Sign in')
 
@@ -270,8 +279,9 @@ const renderLogin = () => {
 
   const form = el('form', { class: 'card auth-card' }, [
     el('h1', { class: 'title' }, 'S19y Memory'),
-    el('p', { class: 'subtitle' }, 'Sign in with your passkey'),
+    el('p', { class: 'subtitle' }, 'Sign in with your passkey or password'),
     nameInput,
+    passwordInput,
     error,
     submit,
     el('p', { class: 'alt-link' }, ['No account yet? ', el('a', { href: '#/register' }, 'Register')])
@@ -284,8 +294,16 @@ const renderLogin = () => {
     try {
       const begin = await api('/api/login/begin', {
         method: 'POST',
-        body: JSON.stringify({ name: nameInput.value.trim() })
+        body: JSON.stringify({
+          name: nameInput.value.trim(),
+          password: passwordInput.value || undefined
+        })
       })
+      if (begin.passwordLogin) {
+        state.user = begin.user
+        navigate('#/memories')
+        return
+      }
       const assertion = await startAuthentication(begin.options)
       const finish = await api('/api/login/finish', {
         method: 'POST',

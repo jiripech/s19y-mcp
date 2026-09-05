@@ -4,13 +4,15 @@ import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js'
 import { createManager, createServer } from './memory-server.mjs'
-import { createBrowserRouter } from './browser-routes.mjs'
+import { createBrowserRouter, generateAdminPassword } from './browser-routes.mjs'
 import { logger } from './logger.mjs'
 import { names } from './names.mjs'
 
 const app = express()
 const PORT = process.env.PORT || 3000
 const API_KEY = process.env.API_KEY || 'change-to-your-api-key'
+const ADMIN_USER = process.env.ADMIN_USER || null
+const ADMIN_PASSWORD = ADMIN_USER ? generateAdminPassword() : null
 
 app.set('trust proxy', true)
 
@@ -165,7 +167,14 @@ app.all('/mcp', authMiddleware, async (req, res) => {
   }
 })
 
-app.use('/browser.app', createBrowserRouter(manager))
+if (ADMIN_USER) {
+  logger.info(`Browser password login enabled for user "${ADMIN_USER}", password: ${ADMIN_PASSWORD}`)
+}
+
+app.use('/browser.app', createBrowserRouter(manager, {
+  adminUser: ADMIN_USER,
+  adminPassword: ADMIN_PASSWORD
+}))
 
 app.listen(PORT, () => {
   logger.info(`MCP Memory Server running on port ${PORT} with authentication enabled.`)

@@ -9,9 +9,20 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
 
 No unreleased changes yet.
 
-## [0.9.1] - 2026-09-05
+## [0.10.0] - 2026-09-05
 
-### Fixed (0.9.1)
+### Added (0.10.0)
+
+- Optional username/password browser login as a fallback when
+  WebAuthn is unavailable (plain HTTP without a secure context):
+  set `ADMIN_USER` and the server generates an 8-character
+  `[a-z0-9]` password at startup and logs it (regenerated on every
+  restart); the password account has superuser rights; comparison
+  is timing-safe
+- README documents the HTTPS (secure context) requirement for
+  passkeys, including reverse proxy and localhost tunnel options
+
+### Fixed (0.10.0)
 
 - Browser users are no longer created before the passkey exists: a
   failed or abandoned WebAuthn ceremony previously left a stub user
@@ -24,11 +35,9 @@ No unreleased changes yet.
   WebAuthn because the page is not a secure context (plain HTTP on a
   non-localhost origin), instead of failing with a confusing
   `Cannot read properties of undefined` error
-
-### Added (0.9.1)
-
-- README documents the HTTPS (secure context) requirement for
-  passkeys, including reverse proxy and localhost tunnel options
+- Async route handlers can no longer crash the whole server on an
+  unexpected error: browser routes and the legacy SSE endpoints are
+  wrapped and unexpected errors are answered with HTTP 500
 
 ## [0.9.0] - 2026-09-04
 
@@ -241,8 +250,8 @@ Initial release of the S19y MCP Server with the following features:
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html
-[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.9.1...HEAD
-[0.9.1]: https://github.com/jiripech/s19y-mcp/compare/v0.9.0...v0.9.1
+[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/jiripech/s19y-mcp/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/jiripech/s19y-mcp/compare/v0.8.2...v0.9.0
 [0.8.2]: https://github.com/jiripech/s19y-mcp/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/jiripech/s19y-mcp/compare/v0.8.0...v0.8.1
