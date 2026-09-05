@@ -1,4 +1,4 @@
-const CACHE_NAME = 's19y-browser-v2'
+const CACHE_NAME = 's19y-browser-__BUILD_TAG__'
 const APP_PREFIX = '/browser.app/'
 const PRECACHE_URLS = [
   '/browser.app/',

@@ -2,3 +2,5 @@ node_modules/
 memory.jsonl
 tmp/
 .env
+data/*
+!data/names.txt

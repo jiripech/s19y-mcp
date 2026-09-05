@@ -15,11 +15,18 @@ COPY server.mjs .
 COPY memory-server.mjs .
 COPY logger.mjs .
 COPY names.mjs .
+COPY name-pool.mjs .
 COPY webauthn.mjs .
 COPY browser-sessions.mjs .
 COPY browser-routes.mjs .
 COPY browser ./browser/
 COPY entrypoint.sh .
+
+# Bake the build tag into the service worker cache name so every
+# release invalidates the browser cache automatically
+ARG BUILD_TAG=dev
+RUN sed -i "s/__BUILD_TAG__/${BUILD_TAG}/" browser/sw.js
+
 RUN chmod +x entrypoint.sh
 
 # Environment configuration

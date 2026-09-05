@@ -4,6 +4,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { KnowledgeGraphManager } from '@modelcontextprotocol/server-memory/dist/index.js'
 import { z } from 'zod'
 import { logger } from './logger.mjs'
+import { initNamePool, claimName, isProtectedMemory } from './name-pool.mjs'
 
 async function resolveMemoryPath() {
   if (process.env.MEMORY_FILE_PATH) {
@@ -25,6 +26,7 @@ async function resolveMemoryPath() {
 export async function createManager() {
   const memoryPath = await resolveMemoryPath()
   const manager = new KnowledgeGraphManager(memoryPath)
+  await initNamePool(manager)
   const graph = await manager.readGraph()
   logger.info(`Loaded ${graph.entities.length} memories and ${graph.relations.length} relations from ${memoryPath}`)
   return manager
@@ -38,13 +40,18 @@ export async function createServer(manager) {
 
   const server = new McpServer({
     name: 's19y-memory',
-    version: '0.8.2'
+    version: '0.9.0'
   }, {
     instructions: 'Shared memory pool for multiple agents. Each session ' +
-      'is assigned a codename shown in server logs; a stable name can be ' +
-      'set via the X-Agent-Name request header in the client MCP config ' +
-      '(e.g. opencode "headers"). Search with search_memories before ' +
-      'storing to avoid duplicates.'
+      'is assigned a codename shown in server logs. If no X-Agent-Name ' +
+      'header was configured for your session, pick your own stable ' +
+      'identity: retrieve the memory "agent_names" to see available ' +
+      'names, choose one, introduce yourself to your user with that ' +
+      'name so they are aware of it, and pass it as source on every ' +
+      'store_memory and update_memory call - keep the same name in all ' +
+      'future sessions. Picking a name marks it as taken and offers ' +
+      'the next ordinal variant to later agents. Search with ' +
+      'search_memories before storing to avoid duplicates.'
   })
 
   server.tool(
@@ -80,6 +87,9 @@ export async function createServer(manager) {
               observations
             }])
             logger.info(`Stored memory ${entityName} (importance ${importance}${mem.source ? `, source ${mem.source}` : ''})`)
+            if (mem.source) {
+              await claimName(mem.source).catch(err => logger.warn(`Name pool claim failed: ${err.message}`))
+            }
             results.push({ name: entityName, success: true, message: 'Memory stored successfully' })
           } catch (err) {
             results.push({ name: entityName, success: false, message: err.message })
@@ -101,6 +111,9 @@ export async function createServer(manager) {
         observations
       }])
       logger.info(`Stored memory ${entityName} (importance ${importance}${source ? `, source ${source}` : ''})`)
+      if (source) {
+        await claimName(source).catch(err => logger.warn(`Name pool claim failed: ${err.message}`))
+      }
       return {
         content: [{ type: 'text', text: JSON.stringify({ success: true, name: entityName }) }]
       }
@@ -118,6 +131,13 @@ export async function createServer(manager) {
       importance: z.number().min(1).max(10).optional().describe('New importance level 1-10')
     },
     async ({ name, content, tags, source, importance }) => {
+      if (isProtectedMemory(name)) {
+        logger.error(`[CRIT] Attempt to modify protected system memory "${name}"`)
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'This memory is managed by the server and cannot be modified' }) }],
+          isError: true
+        }
+      }
       const graph = await manager.openNodes([name])
       if (graph.entities.length === 0) {
         return {
@@ -163,6 +183,9 @@ export async function createServer(manager) {
         observations
       }])
       logger.info(`Updated memory ${name} (importance ${mergedImportance}${mergedSource ? `, source ${mergedSource}` : ''})`)
+      if (mergedSource && mergedSource !== currentSource) {
+        await claimName(mergedSource).catch(err => logger.warn(`Name pool claim failed: ${err.message}`))
+      }
       return {
         content: [{ type: 'text', text: JSON.stringify({ success: true, name }) }]
       }
@@ -280,6 +303,13 @@ export async function createServer(manager) {
       source: z.string().optional().describe('Source identifier to guard against cross-source deletion')
     },
     async ({ name, source }) => {
+      if (isProtectedMemory(name)) {
+        logger.error(`[CRIT] Attempt to delete protected system memory "${name}"`)
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'This memory is managed by the server and cannot be deleted' }) }],
+          isError: true
+        }
+      }
       if (source) {
         const graph = await manager.openNodes([name])
         if (graph.entities.length === 0) {

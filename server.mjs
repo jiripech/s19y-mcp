@@ -2,6 +2,7 @@ import express from 'express'
 import { randomUUID } from 'node:crypto'
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js'
 import { createManager, createServer } from './memory-server.mjs'
 import { createBrowserRouter } from './browser-routes.mjs'
 import { logger } from './logger.mjs'
@@ -118,26 +119,29 @@ app.all('/mcp', authMiddleware, async (req, res) => {
 
     if (sessionId && sessions.has(sessionId)) {
       transport = sessions.get(sessionId).transport
-    } else if (req.method === 'POST' && !sessionId) {
+    } else if (req.method === 'POST' && !sessionId && isInitializeRequest(req.body)) {
+      const sessionRef = {}
       transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => randomUUID()
+        sessionIdGenerator: () => randomUUID(),
+        onsessioninitialized: (sid) => {
+          const name = assignName(req)
+          sessionRef.sid = sid
+          sessionRef.name = name
+          sessions.set(sid, { transport, server, name })
+          logger.info(`${name} (${sid}) connected from ${req.ip} (Streamable HTTP)`)
+        }
       })
       const server = await createServer(manager)
       await server.connect(transport)
 
-      await transport.handleRequest(req, res, req.body)
-
-      const sid = transport.sessionId
-  const name = assignName(req)
-      sessions.set(sid, { transport, server, name })
-      logger.info(`${name} (${sid}) connected from ${req.ip} (Streamable HTTP)`)
-
       transport.onclose = () => {
-        sessions.delete(sid)
-        usedNames.delete(name)
+        const { sid, name } = sessionRef
+        if (sid) sessions.delete(sid)
+        if (name) usedNames.delete(name)
         logger.info(`${name} (${sid}) closed (active: ${sessions.size})`)
       }
 
+      await transport.handleRequest(req, res, req.body)
       return
     } else if (sessionId) {
       return res.status(404).json({

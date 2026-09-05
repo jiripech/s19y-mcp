@@ -9,6 +9,45 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
 
 No unreleased changes yet.
 
+## [0.9.0] - 2026-09-04
+
+### Added (0.9.0)
+
+- Agent self-identification: the server maintains a shared,
+  server-managed memory `agent_names` listing available names (Roman
+  philosophers), seeded from `names.txt` in the data directory; agents
+  without a stable `X-Agent-Name` header pick a name from it,
+  introduce themselves to their user, and use it as `source` on
+  `store_memory` / `update_memory`; picking a name marks it taken and
+  rotates in the next ordinal variant ("the 2nd", "the 3rd", ...)
+  keeping the list always current
+- The `agent_names` memory can only be updated by the server; MCP
+  `update_memory` / `delete_memory` and the browser superuser UI
+  reject modifications and log `[CRIT]`
+- Browser auth events are now logged: registration start, passkey
+  creation, sign-in, sign-out, and all rejection reasons
+- Document all logged events in a README subsection
+- Server `instructions` explain the self-identification flow to
+  agents
+
+### Fixed (0.9.0)
+
+- Registration token: the `REGISTRATION_TOKEN` environment variable
+  was ignored (a random token from `users.json` was expected instead),
+  so registration with the configured token failed with `Invalid
+  registration token`; the environment variable now takes precedence,
+  and the superuser UI change is rejected while it is set
+- Browser service worker cache name is baked from the build tag
+  (`s19y-browser-<tag>`) so every release invalidates the frontend
+  cache automatically; local builds fall back to `dev`
+- Session setup race under parallel MCP calls: the session was
+  registered only after the initialize response completed, so
+  concurrent follow-ups could get `Session not found` (404) and hit a
+  fresh transport reporting `Server not initialized`; the session is
+  now registered the moment the session ID is generated, and headerless
+  POSTs that are not initialize requests are rejected without creating
+  an orphan transport
+
 ## [0.8.2] - 2026-09-04
 
 ### Fixed (0.8.2)
@@ -181,7 +220,8 @@ Initial release of the S19y MCP Server with the following features:
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html
-[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.8.2...HEAD
+[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/jiripech/s19y-mcp/compare/v0.8.2...v0.9.0
 [0.8.2]: https://github.com/jiripech/s19y-mcp/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/jiripech/s19y-mcp/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/jiripech/s19y-mcp/compare/v0.7.0...v0.8.0

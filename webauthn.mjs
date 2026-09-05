@@ -47,8 +47,15 @@ export const saveUsers = async (data) => {
 }
 
 export const getRegistrationToken = async () => {
+  if (process.env.REGISTRATION_TOKEN) {
+    return process.env.REGISTRATION_TOKEN
+  }
   const data = await loadUsers()
   return data.registrationToken
+}
+
+export const isRegistrationTokenManagedByEnv = () => {
+  return Boolean(process.env.REGISTRATION_TOKEN)
 }
 
 export const setRegistrationToken = async (newToken) => {

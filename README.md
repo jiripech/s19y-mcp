@@ -166,6 +166,24 @@ Look up the codename of a session with `GET /session` (pass the
 `Mcp-Session-Id` header or a `sessionId` query parameter). Names are
 released back to the pool when the session closes.
 
+### Agent self-identification
+
+Agents without an `X-Agent-Name` header can pick a permanent identity
+themselves: the server maintains a protected shared memory
+`agent_names` listing the currently available names (Roman
+philosophers). An agent retrieves it, chooses a name, introduces
+itself to its user with that name, and passes it as `source` on every
+`store_memory` and `update_memory` call. When the server sees a `source`
+matching an available name it marks it taken and rotates in the next
+ordinal variant ("Cicero" becomes "Cicero the 2nd", and so on), so the
+list always reflects what is still available.
+
+The `agent_names` memory is managed by the server only: MCP
+`update_memory` / `delete_memory` and the browser superuser UI reject
+modifications. The available-name list is persisted in `names.txt`
+inside the data directory (seeded on first start) and restored from
+there on startup.
+
 Sessions are held in memory. After a server restart every client's
 session is gone; requests carrying a stale session ID are answered
 with HTTP 404 (`Session not found`), the MCP-standard signal for a
@@ -219,6 +237,25 @@ disconnect (session ID and client IP). Set `LOG_LEVEL=debug` to also log
 each HTTP request (method, path, status, duration). Client IPs are
 resolved from the `X-Forwarded-For` header when running behind a
 reverse proxy.
+
+### Logged events
+
+| Event | Level | Details included |
+| ----- | ----- | ---------------- |
+| Memory restore at startup | info | counts and file path |
+| Memory write or delete | info | memory name, importance, source |
+| MCP session connect / close | info | agent name, session ID, IP, transport |
+| Agent name collision | warn | requested name, fallback |
+| Cross-source delete attempt | error (`[CRIT]`) | agent name, target memory |
+| Browser registration started | info | user name, role, IP |
+| Browser registration rejected | warn | user name, reason, IP |
+| Passkey registered | info | user name, IP |
+| Passkey sign-in / sign-out | info | user name, IP |
+| Passkey verification failure | warn | user ID, IP |
+| Unknown login attempt | warn | requested name, IP |
+| User deleted (superuser) | info | target, actor |
+| Registration token changed | info | actor |
+| HTTP request (debug only) | debug | method, path, status, duration |
 
 ## API Reference
 

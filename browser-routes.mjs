@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import {
   loadUsers,
   getRegistrationToken,
+  isRegistrationTokenManagedByEnv,
   setRegistrationToken,
   findUserByName,
   findUserById,
@@ -16,6 +17,7 @@ import {
   listUsers
 } from './webauthn.mjs'
 import { cookieName, cookieOptions, createSession, getSession, deleteSession } from './browser-sessions.mjs'
+import { isProtectedMemory } from './name-pool.mjs'
 import { logger } from './logger.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -112,16 +114,19 @@ export function createBrowserRouter(manager) {
     if (token || !isFirstUser) {
       const expectedToken = await getRegistrationToken()
       if (!token || token !== expectedToken) {
+        logger.warn(`Registration rejected for "${name}" from ${req.ip}: invalid token`)
         return res.status(403).json({ error: 'Invalid registration token' })
       }
     }
     const existing = await findUserByName(name)
     if (existing) {
+      logger.warn(`Registration rejected for "${name}" from ${req.ip}: name already taken`)
       return res.status(409).json({ error: 'User name already taken' })
     }
     const user = await createUser(name, isFirstUser ? 'superuser' : 'user')
     const options = await generateRegistrationOptions(name)
     pendingChallenges.set(user.id, { challenge: options.challenge, createdAt: Date.now() })
+    logger.info(`Registration started for "${name}" (${isFirstUser ? 'superuser' : 'user'}) from ${req.ip}`)
     res.json({ options, userId: user.id })
   })
 
@@ -135,9 +140,11 @@ export function createBrowserRouter(manager) {
     try {
       result = await verifyRegistration(userId, { challenge: pending.challenge, response })
     } catch {
+      logger.warn(`Passkey registration failed for user ${userId} from ${req.ip}`)
       return res.status(400).json({ error: 'Registration verification failed' })
     }
     if (!result.verified) {
+      logger.warn(`Passkey registration failed for user ${userId} from ${req.ip}`)
       return res.status(400).json({ error: 'Registration verification failed' })
     }
     pendingChallenges.delete(userId)
@@ -145,6 +152,7 @@ export function createBrowserRouter(manager) {
     if (!user) {
       return res.status(400).json({ error: 'Registration verification failed' })
     }
+    logger.info(`User "${user.name}" registered a passkey from ${req.ip}`)
     startSession(res, user)
   })
 
@@ -152,6 +160,7 @@ export function createBrowserRouter(manager) {
     const { name } = req.body
     const user = await findUserByName(name)
     if (!user) {
+      logger.warn(`Login rejected from ${req.ip}: unknown user "${name}"`)
       return res.status(404).json({ error: 'User not found' })
     }
     if (!user.webauthn || user.webauthn.length === 0) {
@@ -172,9 +181,11 @@ export function createBrowserRouter(manager) {
     try {
       result = await verifyLogin(userId, { challenge: pending.challenge, response })
     } catch {
+      logger.warn(`Passkey login failed for user ${userId} from ${req.ip}`)
       return res.status(400).json({ error: 'Login verification failed' })
     }
     if (!result.verified) {
+      logger.warn(`Passkey login failed for user ${userId} from ${req.ip}`)
       return res.status(400).json({ error: 'Login verification failed' })
     }
     pendingChallenges.delete(userId)
@@ -182,11 +193,13 @@ export function createBrowserRouter(manager) {
     if (!user) {
       return res.status(400).json({ error: 'Login verification failed' })
     }
+    logger.info(`User "${user.name}" signed in from ${req.ip}`)
     startSession(res, user)
   })
 
   router.post('/api/logout', requireAuth, (req, res) => {
     deleteSession(req.sessionToken)
+    logger.info(`User "${req.session.userName}" signed out`)
     res.clearCookie(cookieName, { path: '/browser.app' })
     res.json({ success: true })
   })
@@ -221,6 +234,9 @@ export function createBrowserRouter(manager) {
     const { token } = req.body
     if (typeof token !== 'string' || token.length === 0) {
       return res.status(400).json({ error: 'Token must be a non-empty string' })
+    }
+    if (isRegistrationTokenManagedByEnv()) {
+      return res.status(400).json({ error: 'Registration token is managed by the REGISTRATION_TOKEN environment variable and cannot be changed here' })
     }
     await setRegistrationToken(token)
     logger.info(`Registration token updated by ${req.session.userName}`)
@@ -259,6 +275,9 @@ export function createBrowserRouter(manager) {
 
   router.put('/api/memories/:name', requireSuperuser, async (req, res) => {
     const { name } = req.params
+    if (isProtectedMemory(name)) {
+      return res.status(403).json({ error: 'This memory is managed by the server and cannot be modified' })
+    }
     const graph = await manager.openNodes([name])
     if (graph.entities.length === 0) {
       return res.status(404).json({ error: 'Memory not found' })
@@ -284,6 +303,9 @@ export function createBrowserRouter(manager) {
 
   router.delete('/api/memories/:name', requireSuperuser, async (req, res) => {
     const { name } = req.params
+    if (isProtectedMemory(name)) {
+      return res.status(403).json({ error: 'This memory is managed by the server and cannot be deleted' })
+    }
     await manager.deleteEntities([name])
     logger.info(`Deleted memory ${name}`)
     res.json({ success: true })
