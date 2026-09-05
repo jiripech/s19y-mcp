@@ -19,10 +19,13 @@ No unreleased changes yet.
   `[a-z0-9]` password at startup and logs it (regenerated on every
   restart); the password account has superuser rights; comparison
   is timing-safe
-- README documents the HTTPS (secure context) requirement for
-  passkeys, including reverse proxy and localhost tunnel options
+- Document previously undocumented log events in the README
+  (name pool restore, agent identity claims, password login,
+  protected memory tamper)
 
-### Fixed (0.10.0)
+## [0.9.1] - 2026-09-05
+
+### Fixed (0.9.1)
 
 - Browser users are no longer created before the passkey exists: a
   failed or abandoned WebAuthn ceremony previously left a stub user
@@ -38,6 +41,11 @@ No unreleased changes yet.
 - Async route handlers can no longer crash the whole server on an
   unexpected error: browser routes and the legacy SSE endpoints are
   wrapped and unexpected errors are answered with HTTP 500
+
+### Added (0.9.1)
+
+- README documents the HTTPS (secure context) requirement for
+  passkeys, including reverse proxy and localhost tunnel options
 
 ## [0.9.0] - 2026-09-04
 
@@ -251,7 +259,8 @@ Initial release of the S19y MCP Server with the following features:
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html
 [unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.10.0...HEAD
-[0.10.0]: https://github.com/jiripech/s19y-mcp/compare/v0.9.0...v0.10.0
+[0.10.0]: https://github.com/jiripech/s19y-mcp/compare/v0.9.1...v0.10.0
+[0.9.1]: https://github.com/jiripech/s19y-mcp/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/jiripech/s19y-mcp/compare/v0.8.2...v0.9.0
 [0.8.2]: https://github.com/jiripech/s19y-mcp/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/jiripech/s19y-mcp/compare/v0.8.0...v0.8.1
