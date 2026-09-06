@@ -4,3 +4,4 @@ tmp/
 .env
 data/*
 !data/names.txt
+*.code-workspace
