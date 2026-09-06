@@ -52,8 +52,24 @@ export async function createServer(manager, options = {}) {
   const markIdentified = (source) => {
     if (session && source) {
       session.identified = true
+      if (!session.source) {
+        session.source = source
+      } else if (session.source !== source) {
+        logger.warn(`Session identity "${session.source}" does not match source "${source}" used in a tool call`)
+      }
     }
   }
+  const sourceOf = (entity) => {
+    const match = (entity.observations || []).find(o => o.match(/^source: (.+)$/))
+    return match ? match.replace(/^source: /, '') : null
+  }
+  const rwFor = (entity) => {
+    if (!session || !session.source) {
+      return 0
+    }
+    return sourceOf(entity) === session.source ? 1 : 0
+  }
+  const withRw = (entity) => ({ ...entity, rw: rwFor(entity) })
 
   const server = new McpServer({
     name: 's19y-memory',
@@ -69,8 +85,13 @@ export async function createServer(manager, options = {}) {
       'store_memory and update_memory call and keep it for all future ' +
       'sessions. Picking a name marks it as taken and offers the next ' +
       'ordinal variant to later agents. The server repeats this ' +
-      'reminder on every tool response until you comply. Search with ' +
-      'search_memories before storing to avoid duplicates.'
+      'reminder on every tool response until you comply. Memories ' +
+      'carry an rw flag: rw:1 means the memory belongs to your own ' +
+      'identity and you may update or delete it, rw:0 belongs to ' +
+      'another identity or to the system - do not attempt to modify ' +
+      'rw:0 memories; system-owned memories (the names list) reject ' +
+      'modification and log the attempt. Search with search_memories ' +
+      'before storing to avoid duplicates.'
   })
 
   server.tool(
@@ -218,9 +239,10 @@ export async function createServer(manager, options = {}) {
     'retrieve_memory',
     'Retrieve a specific memory by name',
     {
-      name: z.string().describe('The memory name to retrieve')
+      name: z.string().describe('The memory name to retrieve'),
+      source: z.string().optional().describe('Only retrieve when attributed to this agent/source')
     },
-    async ({ name }) => {
+    async ({ name, source }) => {
       const graph = await manager.openNodes([name])
       if (graph.entities.length === 0) {
         return withNotice({
@@ -228,8 +250,14 @@ export async function createServer(manager, options = {}) {
           isError: true
         })
       }
+      if (source && sourceOf(graph.entities[0]) !== source) {
+        return withNotice({
+          content: [{ type: 'text', text: JSON.stringify({ error: 'Memory not found' }) }],
+          isError: true
+        })
+      }
       return withNotice({
-        content: [{ type: 'text', text: JSON.stringify({ success: true, memory: graph.entities[0] }) }]
+        content: [{ type: 'text', text: JSON.stringify({ success: true, memory: withRw(graph.entities[0]) }) }]
       })
     }
   )
@@ -248,6 +276,7 @@ export async function createServer(manager, options = {}) {
           e.observations.some(o => o === `source: ${source}`)
         )
       }
+      graph.entities = graph.entities.map(withRw)
       return withNotice({
         content: [{ type: 'text', text: JSON.stringify({ success: true, results: graph }) }]
       })
@@ -267,6 +296,7 @@ export async function createServer(manager, options = {}) {
           e.observations.some(o => o === `source: ${source}`)
         )
       }
+      graph.entities = graph.entities.map(withRw)
       return withNotice({
         content: [{ type: 'text', text: JSON.stringify({ success: true, graph }) }]
       })

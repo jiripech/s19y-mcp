@@ -110,7 +110,7 @@ allow them in the opencode `permission` block:
 | ----------------- | ----------------------------------------------------- |
 | `store_memory`    | Store memories (optional `source`, batch `memories`)  |
 | `update_memory`   | Update an existing memory (content, tags, source)     |
-| `retrieve_memory` | Retrieve a specific memory by name                    |
+| `retrieve_memory` | Retrieve a memory by name (optional `source` filter)  |
 | `search_memories` | Search memories (optional `source` filter)            |
 | `list_memories`   | List all stored memories (optional `source` filter)   |
 | `count_memories`  | Count stored memories (optional `source` filter)      |
@@ -135,6 +135,14 @@ accept an optional `source` to filter results to one agent:
 Attribution keeps the store shared while making it filterable. It is an
 explicit design choice over per-agent isolation: shared memories can be
 searched across all agents, or narrowed to a single contributor.
+Memories returned by `retrieve_memory`, `search_memories`, and
+`list_memories` carry an advisory `rw` flag: `1` when the memory's
+source matches the calling session's claimed identity, `0` when it
+belongs to another identity, an unclaimed author, or the system.
+Agents are told to treat `rw: 0` memories as read-only; the system
+enforces this only for server-owned memories such as `agent_names`.
+Memories without any source are attributed to **Unclaimed** in the
+memory browser.
 
 ### Details
 
@@ -296,7 +304,7 @@ The server provides the following MCP tools:
 
 - `store_memory` - Store memories (optional `source`, batch mode)
 - `update_memory` - Update an existing memory by name
-- `retrieve_memory` - Retrieve a specific memory by name
+- `retrieve_memory` - Retrieve a memory by name, optionally filtered by `source`
 - `search_memories` - Search memories, optionally filtered by `source`
 - `list_memories` - List all memories, optionally filtered by `source`
 - `count_memories` - Count memories, optionally filtered by `source`

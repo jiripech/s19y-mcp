@@ -21,6 +21,14 @@ No unreleased changes yet.
 - Server `instructions` now state the requirement imperatively
   (establish a permanent identity before the first memory write)
 - `GET /session` reports whether the session is identified
+- `rw` flag on memories returned by `retrieve_memory`,
+  `list_memories`, and `search_memories`: `1` when the memory's
+  source matches the session's claimed identity, `0` otherwise
+  (advisory only, explained in the server instructions);
+  `retrieve_memory` gained an optional `source` filter (mismatch
+  returns not found), helping agents conserve context
+- Memory browser attributes unclaimed memories (no source) to
+  **Unclaimed** instead of showing no owner
 - Memory browser displays the `agent_names` system memory as
   "Available agent names (N)" owned by **System** and hides its
   Edit/Delete buttons (the server already rejected modifications)

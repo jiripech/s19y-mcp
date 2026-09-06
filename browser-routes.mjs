@@ -70,7 +70,7 @@ function parseMemory(entity) {
       content = obs
     }
   }
-  return { name: entity.name, content, importance, tags, source }
+  return { name: entity.name, content, importance, tags, source: source || 'Unclaimed' }
 }
 
 export function generateAdminPassword() {
