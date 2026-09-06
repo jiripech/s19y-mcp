@@ -45,6 +45,16 @@ const parseCookies = (req) => {
 
 function parseMemory(entity) {
   const observations = entity.observations || []
+  if (observations[0] === 'system: reserved') {
+    return {
+      name: entity.name,
+      content: `Available agent names (${observations.length - 1})`,
+      importance: 10,
+      tags: ['system'],
+      source: 'System',
+      system: true
+    }
+  }
   let content = ''
   let importance = 5
   let tags = []

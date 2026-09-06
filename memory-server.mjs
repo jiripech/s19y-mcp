@@ -32,25 +32,44 @@ export async function createManager() {
   return manager
 }
 
-export async function createServer(manager) {
+export async function createServer(manager, options = {}) {
   if (!manager) {
     const memoryPath = await resolveMemoryPath()
     manager = new KnowledgeGraphManager(memoryPath)
   }
+  const session = options.session || null
+  const withNotice = (result) => {
+    if (session && !session.identified) {
+      result.identityNotice =
+        `Anonymous session (codename "${session.name}"). Before writing ` +
+        'anything, establish a permanent identity: retrieve the memory ' +
+        '"agent_names", pick an available name, tell your user which name ' +
+        'you picked, then pass it as source on every store_memory and ' +
+        'update_memory call.'
+    }
+    return result
+  }
+  const markIdentified = (source) => {
+    if (session && source) {
+      session.identified = true
+    }
+  }
 
   const server = new McpServer({
     name: 's19y-memory',
-    version: '0.10.0'
+    version: '0.11.0'
   }, {
     instructions: 'Shared memory pool for multiple agents. Each session ' +
       'is assigned a codename shown in server logs. If no X-Agent-Name ' +
-      'header was configured for your session, pick your own stable ' +
-      'identity: retrieve the memory "agent_names" to see available ' +
-      'names, choose one, introduce yourself to your user with that ' +
-      'name so they are aware of it, and pass it as source on every ' +
-      'store_memory and update_memory call - keep the same name in all ' +
-      'future sessions. Picking a name marks it as taken and offers ' +
-      'the next ordinal variant to later agents. Search with ' +
+      'header was configured for your session, you MUST establish a ' +
+      'permanent identity before your first memory write: retrieve the ' +
+      'memory "agent_names", pick an available name, and tell your user ' +
+      'which name you picked - they need it to recognize your work in ' +
+      'the memory browser. Then pass the name as source on every ' +
+      'store_memory and update_memory call and keep it for all future ' +
+      'sessions. Picking a name marks it as taken and offers the next ' +
+      'ordinal variant to later agents. The server repeats this ' +
+      'reminder on every tool response until you comply. Search with ' +
       'search_memories before storing to avoid duplicates.'
   })
 
@@ -88,6 +107,7 @@ export async function createServer(manager) {
             }])
             logger.info(`Stored memory ${entityName} (importance ${importance}${mem.source ? `, source ${mem.source}` : ''})`)
             if (mem.source) {
+              markIdentified(mem.source)
               await claimName(mem.source).catch(err => logger.warn(`Name pool claim failed: ${err.message}`))
             }
             results.push({ name: entityName, success: true, message: 'Memory stored successfully' })
@@ -95,9 +115,9 @@ export async function createServer(manager) {
             results.push({ name: entityName, success: false, message: err.message })
           }
         }
-        return {
+        return withNotice({
           content: [{ type: 'text', text: JSON.stringify({ success: true, results }) }]
-        }
+        })
       }
       const { content, tags = [], source, importance = 5 } = args
       const entityName = `memory_${Date.now()}`
@@ -112,11 +132,12 @@ export async function createServer(manager) {
       }])
       logger.info(`Stored memory ${entityName} (importance ${importance}${source ? `, source ${source}` : ''})`)
       if (source) {
+        markIdentified(source)
         await claimName(source).catch(err => logger.warn(`Name pool claim failed: ${err.message}`))
       }
-      return {
+      return withNotice({
         content: [{ type: 'text', text: JSON.stringify({ success: true, name: entityName }) }]
-      }
+      })
     }
   )
 
@@ -133,17 +154,17 @@ export async function createServer(manager) {
     async ({ name, content, tags, source, importance }) => {
       if (isProtectedMemory(name)) {
         logger.error(`[CRIT] Attempt to modify protected system memory "${name}"`)
-        return {
+        return withNotice({
           content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'This memory is managed by the server and cannot be modified' }) }],
           isError: true
-        }
+        })
       }
       const graph = await manager.openNodes([name])
       if (graph.entities.length === 0) {
-        return {
+        return withNotice({
           content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'Memory not found' }) }],
           isError: true
-        }
+        })
       }
       const entity = graph.entities[0]
       let currentContent = ''
@@ -184,11 +205,12 @@ export async function createServer(manager) {
       }])
       logger.info(`Updated memory ${name} (importance ${mergedImportance}${mergedSource ? `, source ${mergedSource}` : ''})`)
       if (mergedSource && mergedSource !== currentSource) {
+        markIdentified(mergedSource)
         await claimName(mergedSource).catch(err => logger.warn(`Name pool claim failed: ${err.message}`))
       }
-      return {
+      return withNotice({
         content: [{ type: 'text', text: JSON.stringify({ success: true, name }) }]
-      }
+      })
     }
   )
 
@@ -201,14 +223,14 @@ export async function createServer(manager) {
     async ({ name }) => {
       const graph = await manager.openNodes([name])
       if (graph.entities.length === 0) {
-        return {
+        return withNotice({
           content: [{ type: 'text', text: JSON.stringify({ error: 'Memory not found' }) }],
           isError: true
-        }
+        })
       }
-      return {
+      return withNotice({
         content: [{ type: 'text', text: JSON.stringify({ success: true, memory: graph.entities[0] }) }]
-      }
+      })
     }
   )
 
@@ -226,9 +248,9 @@ export async function createServer(manager) {
           e.observations.some(o => o === `source: ${source}`)
         )
       }
-      return {
+      return withNotice({
         content: [{ type: 'text', text: JSON.stringify({ success: true, results: graph }) }]
-      }
+      })
     }
   )
 
@@ -245,9 +267,9 @@ export async function createServer(manager) {
           e.observations.some(o => o === `source: ${source}`)
         )
       }
-      return {
+      return withNotice({
         content: [{ type: 'text', text: JSON.stringify({ success: true, graph }) }]
-      }
+      })
     }
   )
 
@@ -265,9 +287,9 @@ export async function createServer(manager) {
           e.observations.some(o => o === `source: ${source}`)
         )
       }
-      return {
+      return withNotice({
         content: [{ type: 'text', text: JSON.stringify({ count: memories.length }) }]
-      }
+      })
     }
   )
 
@@ -289,9 +311,9 @@ export async function createServer(manager) {
         }
       }
       const sources = Object.entries(sourceCounts).map(([name, count]) => ({ name, count }))
-      return {
+      return withNotice({
         content: [{ type: 'text', text: JSON.stringify({ sources }) }]
-      }
+      })
     }
   )
 
@@ -305,18 +327,18 @@ export async function createServer(manager) {
     async ({ name, source }) => {
       if (isProtectedMemory(name)) {
         logger.error(`[CRIT] Attempt to delete protected system memory "${name}"`)
-        return {
+        return withNotice({
           content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'This memory is managed by the server and cannot be deleted' }) }],
           isError: true
-        }
+        })
       }
       if (source) {
         const graph = await manager.openNodes([name])
         if (graph.entities.length === 0) {
-          return {
+          return withNotice({
             content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'Memory not found' }) }],
             isError: true
-          }
+          })
         }
         const entity = graph.entities[0]
         const srcObs = entity.observations.find(o => o.match(/^source: (.+)$/))
@@ -324,18 +346,18 @@ export async function createServer(manager) {
           const actualSource = srcObs.replace(/^source: /, '')
           if (actualSource !== source) {
             logger.error(`[CRIT] Cross-source delete attempt: session source="${source}" target="${name}" target_source="${actualSource}"`)
-            return {
+            return withNotice({
               content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'Cannot delete memory attributed to another source' }) }],
               isError: true
-            }
+            })
           }
         }
       }
       await manager.deleteEntities([name])
       logger.info(`Deleted memory ${name}`)
-      return {
+      return withNotice({
         content: [{ type: 'text', text: JSON.stringify({ success: true, deleted: name }) }]
-      }
+      })
     }
   )
 

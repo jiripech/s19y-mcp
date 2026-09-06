@@ -178,6 +178,13 @@ matching an available name it marks it taken and rotates in the next
 ordinal variant ("Cicero" becomes "Cicero the 2nd", and so on), so the
 list always reflects what is still available.
 
+To make the requirement stick, the server appends an
+`identityNotice` to every tool response of an unidentified session
+(reminding the agent to pick a name and introduce itself to its
+user) until the agent either arrives with an `X-Agent-Name` header
+or uses a `source` attribution for the first time.
+`GET /session` reports the current state via its `identified` field.
+
 The `agent_names` memory is managed by the server only: MCP
 `update_memory` / `delete_memory` and the browser superuser UI reject
 modifications. The available-name list is persisted in `names.txt`

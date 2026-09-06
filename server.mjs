@@ -82,7 +82,8 @@ app.get('/session', authMiddleware, async (req, res) => {
   res.json({
     name: session.name,
     sessionId,
-    transport: session.transport instanceof StreamableHTTPServerTransport ? 'streamable-http' : 'sse'
+    transport: session.transport instanceof StreamableHTTPServerTransport ? 'streamable-http' : 'sse',
+    identified: session.ctx ? session.ctx.identified : true
   })
 })
 
@@ -91,10 +92,11 @@ const wrap = (fn) => (req, res, next) =>
 
 app.get('/sse', authMiddleware, wrap(async (req, res) => {
   const transport = new SSEServerTransport('/messages', res)
-  const server = await createServer(manager)
   const name = assignName(req)
+  const sessionCtx = { name, identified: Boolean(req.headers['x-agent-name']) }
+  const server = await createServer(manager, { session: sessionCtx })
 
-  sessions.set(transport.sessionId, { transport, server, name })
+  sessions.set(transport.sessionId, { transport, server, name, ctx: sessionCtx })
   logger.info(`${name} (${transport.sessionId}) connected from ${req.ip} (SSE)`)
 
   req.on('close', () => {
@@ -125,24 +127,24 @@ app.all('/mcp', authMiddleware, async (req, res) => {
     if (sessionId && sessions.has(sessionId)) {
       transport = sessions.get(sessionId).transport
     } else if (req.method === 'POST' && !sessionId && isInitializeRequest(req.body)) {
-      const sessionRef = {}
+      const name = assignName(req)
+      const sessionCtx = { name, identified: Boolean(req.headers['x-agent-name']) }
+      const sessionRef = { sid: null }
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
         onsessioninitialized: (sid) => {
-          const name = assignName(req)
           sessionRef.sid = sid
-          sessionRef.name = name
-          sessions.set(sid, { transport, server, name })
+          sessions.set(sid, { transport, server, name, ctx: sessionCtx })
           logger.info(`${name} (${sid}) connected from ${req.ip} (Streamable HTTP)`)
         }
       })
-      const server = await createServer(manager)
+      const server = await createServer(manager, { session: sessionCtx })
       await server.connect(transport)
 
       transport.onclose = () => {
-        const { sid, name } = sessionRef
+        const { sid } = sessionRef
         if (sid) sessions.delete(sid)
-        if (name) usedNames.delete(name)
+        usedNames.delete(name)
         logger.info(`${name} (${sid}) closed (active: ${sessions.size})`)
       }
 

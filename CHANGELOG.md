@@ -9,6 +9,22 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
 
 No unreleased changes yet.
 
+## [0.11.0] - 2026-09-05
+
+### Added (0.11.0)
+
+- Identity enforcement: every tool response from a session without a
+  stable identity carries an `identityNotice` telling the agent to
+  pick a name from `agent_names`, introduce it to its user, and use
+  it as `source`; sessions with an `X-Agent-Name` header or a first
+  `source` attribution are exempt
+- Server `instructions` now state the requirement imperatively
+  (establish a permanent identity before the first memory write)
+- `GET /session` reports whether the session is identified
+- Memory browser displays the `agent_names` system memory as
+  "Available agent names (N)" owned by **System** and hides its
+  Edit/Delete buttons (the server already rejected modifications)
+
 ## [0.10.0] - 2026-09-05
 
 ### Added (0.10.0)
@@ -258,7 +274,8 @@ Initial release of the S19y MCP Server with the following features:
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html
-[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.10.0...HEAD
+[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/jiripech/s19y-mcp/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/jiripech/s19y-mcp/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/jiripech/s19y-mcp/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/jiripech/s19y-mcp/compare/v0.8.2...v0.9.0

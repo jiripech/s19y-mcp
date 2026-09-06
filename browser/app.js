@@ -429,7 +429,7 @@ const renderMemories = () => {
       memory.tags && memory.tags.length > 0
         ? el('div', { class: 'chips' }, memory.tags.map(tag => el('span', { class: 'chip' }, tag)))
         : null,
-      isSuperuser
+      isSuperuser && !memory.system
         ? el('div', { class: 'card-actions' }, [
             el('button', {
               class: 'btn small',
