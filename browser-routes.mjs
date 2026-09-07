@@ -312,10 +312,10 @@ export function createBrowserRouter(manager, options = {}) {
   router.get('/api/memories', requireAuth, wrap(async (req, res) => {
     const graph = await manager.readGraph()
     let memories = graph.entities.filter(e => e.entityType === 'memory')
-    if (req.query.source) {
-      memories = memories.filter(e => e.observations.some(o => o === `source: ${req.query.source}`))
-    }
     let parsed = memories.map(parseMemory)
+    if (req.query.source) {
+      parsed = parsed.filter(m => m.source === req.query.source)
+    }
     if (req.query.search) {
       const query = req.query.search.toLowerCase()
       parsed = parsed.filter(m => m.name.toLowerCase().includes(query) || m.content.toLowerCase().includes(query))

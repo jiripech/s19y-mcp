@@ -282,6 +282,7 @@ const renderLogin = () => {
     el('p', { class: 'subtitle' }, 'Sign in with your passkey or password'),
     nameInput,
     passwordInput,
+    ...warnings,
     error,
     submit,
     el('p', { class: 'alt-link' }, ['No account yet? ', el('a', { href: '#/register' }, 'Register')])
@@ -319,7 +320,7 @@ const renderLogin = () => {
     }
   })
 
-  render(el('div', { class: 'auth-wrap' }, [...warnings, form]))
+  render(el('div', { class: 'auth-wrap' }, form))
 }
 
 const renderRegister = () => {
@@ -352,6 +353,7 @@ const renderRegister = () => {
     nameInput,
     tokenInput,
     el('p', { class: 'hint' }, 'Token is required unless you are the first user.'),
+    ...warnings,
     error,
     submit,
     el('p', { class: 'alt-link' }, ['Already registered? ', el('a', { href: '#/login' }, 'Sign in')])
@@ -384,7 +386,7 @@ const renderRegister = () => {
     }
   })
 
-  render(el('div', { class: 'auth-wrap' }, [...warnings, form]))
+  render(el('div', { class: 'auth-wrap' }, form))
 }
 
 const renderMemories = () => {
