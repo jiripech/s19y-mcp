@@ -9,6 +9,17 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
 
 No unreleased changes yet.
 
+## [0.11.2] - 2026-09-07
+
+### Fixed (0.11.2)
+
+- Browser assets are served network-first instead of
+  stale-while-revalidate, so after every deploy the first visit shows
+  the new UI instead of the previous release's files until a second
+  reload
+- The page reloads itself when a new service worker takes control,
+  closing the stale first-paint window completely
+
 ## [0.11.1] - 2026-09-05
 
 ### Fixed (0.11.1)
@@ -293,7 +304,8 @@ Initial release of the S19y MCP Server with the following features:
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html
-[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.11.1...HEAD
+[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.11.2...HEAD
+[0.11.2]: https://github.com/jiripech/s19y-mcp/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/jiripech/s19y-mcp/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/jiripech/s19y-mcp/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/jiripech/s19y-mcp/compare/v0.9.1...v0.10.0

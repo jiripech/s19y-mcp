@@ -53,18 +53,15 @@ self.addEventListener('fetch', (event) => {
 
   if (request.method === 'GET' && STATIC_ASSETS.includes(url.pathname)) {
     event.respondWith(
-      caches.match(request).then(cached => {
-        const network = fetch(request)
-          .then(response => {
-            if (response && response.ok) {
-              const copy = response.clone()
-              caches.open(CACHE_NAME).then(cache => cache.put(request, copy))
-            }
-            return response
-          })
-          .catch(() => cached)
-        return cached || network
-      })
+      fetch(request)
+        .then(response => {
+          if (response && response.ok) {
+            const copy = response.clone()
+            caches.open(CACHE_NAME).then(cache => cache.put(request, copy))
+          }
+          return response
+        })
+        .catch(() => caches.match(request))
     )
   }
 })
