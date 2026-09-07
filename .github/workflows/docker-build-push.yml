@@ -17,7 +17,7 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
     steps:
       - name: Checkout
@@ -58,3 +58,24 @@ jobs:
             BUILD_TAG=${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Create GitHub release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists"
+            exit 0
+          fi
+          VERSION="${GITHUB_REF_NAME#v}"
+          NOTES=$(awk -v ver="$VERSION" \
+            '$0 == "## [" ver "]" {flag=1; next} flag && /^## \[/{exit} flag' \
+            CHANGELOG.md)
+          if [ -n "$NOTES" ]; then
+            gh release create "$GITHUB_REF_NAME" \
+              --verify-tag --title "$GITHUB_REF_NAME" --notes "$NOTES"
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --verify-tag --title "$GITHUB_REF_NAME" --generate-notes
+          fi
