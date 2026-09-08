@@ -5,7 +5,8 @@ const state = {
   sources: [],
   search: '',
   source: '',
-  infoPage: null
+  infoPage: null,
+  llm: 'unknown'
 }
 
 const el = (tag, attrs = {}, children = []) => {
@@ -27,6 +28,23 @@ const el = (tag, attrs = {}, children = []) => {
 
 const render = (node) => {
   app.replaceChildren(node)
+}
+
+const LLM_MESSAGES = {
+  disabled: ['info', 'Memory compression is disabled.'],
+  downloading: ['warn', 'Language model downloading… Compression will work after it finishes.'],
+  starting: ['warn', 'Language model starting… Compression will work in a moment.'],
+  'error-download': ['warn', 'Language model download failed. Compression will keep retrying.'],
+  'error-start': ['warn', 'Language model failed to start. Compression will keep retrying.'],
+  'waiting-key': ['warn', 'Waiting for API_KEY configuration.'],
+  fatal: ['error', 'Startup failed. API_KEY is required.']
+}
+
+const llmBanner = () => {
+  const kind = LLM_MESSAGES[state.llm]
+  if (!kind) return null
+  const [tone, text] = kind
+  return el('div', { class: `message ${tone}`, 'data-role': 'llm-banner' }, text)
 }
 
 const api = async (path, opts = {}) => {
@@ -444,6 +462,7 @@ const renderLogin = () => {
   const form = el('form', { class: 'card auth-card' }, [
     el('h1', { class: 'title' }, 'S19y Memory'),
     el('p', { class: 'subtitle' }, 'Sign in with your passkey or password'),
+    llmBanner(),
     nameInput,
     passwordInput,
     ...warnings,
@@ -514,6 +533,7 @@ const renderRegister = () => {
   const form = el('form', { class: 'card auth-card' }, [
     el('h1', { class: 'title' }, 'S19y Memory'),
     el('p', { class: 'subtitle' }, 'Create an account with a passkey'),
+    llmBanner(),
     nameInput,
     tokenInput,
     el('p', { class: 'hint' }, 'Token is required unless you are the first user.'),
@@ -682,7 +702,7 @@ const renderMemories = () => {
 
   render(el('div', { class: 'page-shell' }, [
     topbar,
-    el('main', { class: 'page' }, [status, grid])
+    el('main', { class: 'page' }, [llmBanner(), status, grid])
   ]))
 
   loadSources()
@@ -1001,15 +1021,28 @@ const route = () => {
   renderMemories()
 }
 
+const loadLlmStatus = async () => {
+  try {
+    const data = await api('/api/status', { method: 'GET' })
+    state.llm = data.llm || 'unknown'
+  } catch {
+    state.llm = 'unknown'
+  }
+}
+
 const boot = async () => {
+  await loadLlmStatus()
   try {
     const data = await api('/api/session')
     state.user = data.user
   } catch {
     state.user = null
   }
-  window.addEventListener('hashchange', route)
-  route()
+  window.addEventListener('hashchange', () => {
+    loadLlmStatus()
+    route()
+  })
+  await route()
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {})
     let refreshing = false

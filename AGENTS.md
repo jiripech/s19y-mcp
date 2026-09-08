@@ -157,3 +157,26 @@ When editing shell scripts, follow these rules:
 - Run `shellcheck -x scripts/*.sh` before committing
 - All scripts must pass with no warnings
 - Use `shellcheck source=.env` directive for `.env` sourcing
+
+## Session Lessons
+
+Hard-won lessons from prior agent sessions. Read this before running
+commands.
+
+- macOS has no `timeout` command (GNU coreutils). Use the Bash tool's
+  own timeout parameter instead; `timeout 90 npm test` fails.
+- `npm test` (the full suite) hangs after passing as a pre-existing
+  side effect (some KG stdio child process keeps the event loop alive).
+  Run individual test files instead, e.g.
+  `npx node --test tests/browser-routes.test.mjs`.
+- When running background/parallel commands that produce output, always
+  write logs into the repo's `./tmp/` directory, never `/tmp/...`
+  (e.g. `mkdir -p tmp/test-logs && ... >
+  tmp/test-logs/browser-test.log 2>&1 &`). The user insists temp work
+  stays under `./tmp`, and `/tmp` logs are read-restricted here.
+- Read generated log files with the Read tool, but the Read tool is
+  also permission-restricted for `/tmp` paths — another reason to keep
+  logs in `./tmp`.
+- The permission config denies `sleep *` except exactly `sleep 5`.
+  Don't write arbitrary `sleep 8` in bash; rely on the tool timeout or
+  `sleep 5`.

@@ -20,6 +20,7 @@ import {
 import { cookieName, cookieOptions, createSession, getSession, deleteSession } from './browser-sessions.mjs'
 import { isProtectedMemory } from './name-pool.mjs'
 import { initInfoStore, listInfoPages, readInfoPage, writeInfoPage, deleteInfoPage } from './info-store.mjs'
+import { readFile } from 'node:fs/promises'
 import { logger } from './logger.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -100,6 +101,7 @@ const passwordMatches = (candidate, expected) => {
 
 export function createBrowserRouter(manager, options = {}) {
   const { adminUser = null, adminPassword = null } = options
+  const dataDir = options.dataDir || null
   const rotateOnUse = options.rotateAdminPasswordOnUse || null
   let currentAdminPassword = adminPassword
   const router = Router()
@@ -289,6 +291,18 @@ export function createBrowserRouter(manager, options = {}) {
       }
     })
   })
+
+  router.get('/api/status', wrap(async (req, res) => {
+    let llm = 'unknown'
+    if (dataDir) {
+      try {
+        llm = (await readFile(join(dataDir, 'llm.status'), 'utf8')).trim() || 'unknown'
+      } catch {
+        llm = 'unknown'
+      }
+    }
+    res.json({ llm, server: 's19y-memory' })
+  }))
 
   router.get('/api/users', requireSuperuser, wrap(async (req, res) => {
     res.json({ users: await listUsers() })

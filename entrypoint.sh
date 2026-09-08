@@ -4,6 +4,11 @@
 MAX_RETRIES=5
 RETRY_COUNT=0
 MAX_SLEEP=60
+DATA_DIR="${DATA_DIR:-/app/data}"
+
+llm_status() {
+  echo "$1" >"$DATA_DIR/llm.status"
+}
 
 check_api_key() {
   if [ -z "$API_KEY" ]; then
@@ -20,6 +25,7 @@ check_api_key() {
 start_llm() {
   if [ "$LLM_ENABLED" = "false" ]; then
     echo "[INFO] Bundled language model disabled (LLM_ENABLED=false)."
+    llm_status "disabled"
     return 0
   fi
   MODEL_URL="${LLM_MODEL_URL:-https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf}"
@@ -30,12 +36,14 @@ start_llm() {
 
   if [ ! -s "$MODEL_PATH" ]; then
     echo "[INFO] Downloading LLM model to $MODEL_PATH (first start)..."
+    llm_status "downloading"
     if curl -fL "$MODEL_URL" -o "$MODEL_PATH.part"; then
       mv "$MODEL_PATH.part" "$MODEL_PATH"
       echo "[INFO] LLM model downloaded."
     else
       rm -f "$MODEL_PATH.part"
       echo "[ERROR] LLM model download failed. The memory compressor will retry every tick until the model is available."
+      llm_status "error-download"
       return 0
     fi
   else
@@ -43,6 +51,7 @@ start_llm() {
   fi
 
   echo "[INFO] Starting llama-server (port $LLM_PORT, context $LLM_CONTEXT, threads $LLM_THREADS)..."
+  llm_status "starting"
   LD_LIBRARY_PATH=/usr/local/lib/llama \
     /usr/local/lib/llama/llama-server -m "$MODEL_PATH" -c "$LLM_CONTEXT" -t "$LLM_THREADS" \
     --host 127.0.0.1 --port "$LLM_PORT" >"$DATA_DIR/llama-server.log" 2>&1 &
@@ -51,22 +60,27 @@ start_llm() {
   while [ "$i" -lt 120 ]; do
     if curl -sf "http://127.0.0.1:$LLM_PORT/health" >/dev/null 2>&1; then
       echo "[INFO] llama-server is healthy."
+      llm_status "ready"
       return 0
     fi
     i=$((i + 1))
     sleep 1
   done
   echo "[ERROR] llama-server did not become healthy in time. The memory compressor will retry every tick."
+  llm_status "error-start"
   return 0
 }
 
+mkdir -p "$DATA_DIR"
+
 if check_api_key; then
   echo "[INFO] API_KEY is configured. Starting server..."
-  start_llm
+  start_llm &
   exec node server.mjs
 fi
 
 echo "[WARN] Waiting for API_KEY to be configured..."
+llm_status "waiting-key"
 
 while [ "$RETRY_COUNT" -lt "$MAX_RETRIES" ]; do
   RETRY_COUNT=$((RETRY_COUNT + 1))
@@ -80,10 +94,11 @@ while [ "$RETRY_COUNT" -lt "$MAX_RETRIES" ]; do
 
   if check_api_key; then
     echo "[INFO] API_KEY is configured. Starting server..."
-    start_llm
+    start_llm &
     exec node server.mjs
   fi
 done
 
 echo "[FATAL] Failed to start after $MAX_RETRIES attempts. API_KEY is required."
+llm_status "fatal"
 exit 1

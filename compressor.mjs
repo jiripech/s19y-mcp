@@ -44,6 +44,7 @@ export const startCompressor = (manager) => {
   }
   logger.info(`Memory compressor enabled (endpoint ${COMPRESSION_ENDPOINT}, model ${COMPRESSION_MODEL}, interval ${COMPRESSION_INTERVAL_MS}ms)`)
   let running = false
+  let lastEndpointError = null
   const tick = async () => {
     if (running) {
       return
@@ -75,8 +76,17 @@ export const startCompressor = (manager) => {
           logger.error(`Compression failed for memory ${entity.name}: ${error.message}`)
         }
       }
+      lastEndpointError = null
     } catch (error) {
-      logger.error(`Memory compressor tick failed: ${error.message}`)
+      const isEndpointDown = /fetch failed|ECONNREFUSED|ETIMEDOUT|ENOTFOUND/i.test(String(error.message))
+      if (isEndpointDown) {
+        if (lastEndpointError !== error.message) {
+          logger.warn(`Compression endpoint not reachable yet (${error.message}). Retrying every tick.`)
+          lastEndpointError = error.message
+        }
+      } else {
+        logger.error(`Memory compressor tick failed: ${error.message}`)
+      }
     } finally {
       running = false
     }

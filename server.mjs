@@ -230,7 +230,8 @@ app.use('/info', createInfoRouter(API_KEY))
 app.use('/browser.app', createBrowserRouter(manager, {
   adminUser: ADMIN_USER,
   adminPassword: storedAdmin ? storedAdmin.password : null,
-  rotateAdminPasswordOnUse: storedAdmin ? storedAdmin.rotate : null
+  rotateAdminPasswordOnUse: storedAdmin ? storedAdmin.rotate : null,
+  dataDir: DATA_DIR
 }))
 
 app.listen(PORT, () => {
