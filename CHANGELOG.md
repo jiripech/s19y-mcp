@@ -5,9 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog][kac], and this project adheres to
 [Semantic Versioning][semver].
 
-## [Unreleased]
+## [0.13.0] - 2026-09-08
 
-### Added (Unreleased)
+### Added (0.13.0)
 
 - `ADMIN_PASSWORD` environment variable: a fixed password that
   overrides the rotating one and never rotates
@@ -346,7 +346,7 @@ Initial release of the S19y MCP Server with the following features:
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html
-[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.12.0...HEAD
+[0.13.0]: https://github.com/jiripech/s19y-mcp/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/jiripech/s19y-mcp/compare/v0.11.2...v0.12.0
 [0.11.2]: https://github.com/jiripech/s19y-mcp/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/jiripech/s19y-mcp/compare/v0.11.0...v0.11.1
