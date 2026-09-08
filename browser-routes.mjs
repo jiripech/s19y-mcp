@@ -19,6 +19,7 @@ import {
 } from './webauthn.mjs'
 import { cookieName, cookieOptions, createSession, getSession, deleteSession } from './browser-sessions.mjs'
 import { isProtectedMemory } from './name-pool.mjs'
+import { initInfoStore, listInfoPages, readInfoPage, writeInfoPage, deleteInfoPage } from './info-store.mjs'
 import { logger } from './logger.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -374,6 +375,57 @@ export function createBrowserRouter(manager, options = {}) {
     }
     await manager.deleteEntities([name])
     logger.info(`Deleted memory ${name}`)
+    res.json({ success: true })
+  }))
+
+  router.get('/api/info', requireAuth, wrap(async (req, res) => {
+    res.json({ pages: await listInfoPages() })
+  }))
+
+  router.get('/api/info/:name', requireAuth, wrap(async (req, res) => {
+    const page = await readInfoPage(req.params.name)
+    if (!page) {
+      return res.status(404).json({ error: 'Info page not found' })
+    }
+    res.json(page)
+  }))
+
+  router.post('/api/info', requireSuperuser, wrap(async (req, res) => {
+    const { name, content } = req.body
+    let result
+    try {
+      result = await writeInfoPage(name, content)
+    } catch (err) {
+      return res.status(400).json({ error: err.message })
+    }
+    logger.info(`Info page "${name}" saved by ${req.session.userName}`)
+    res.json({ success: true, name: result.name, size: result.size })
+  }))
+
+  router.put('/api/info/:name', requireSuperuser, wrap(async (req, res) => {
+    const { name } = req.params
+    const existing = await readInfoPage(name)
+    if (!existing) {
+      return res.status(404).json({ error: 'Info page not found' })
+    }
+    const { content } = req.body
+    let result
+    try {
+      result = await writeInfoPage(name, content)
+    } catch (err) {
+      return res.status(400).json({ error: err.message })
+    }
+    logger.info(`Info page "${name}" saved by ${req.session.userName}`)
+    res.json({ success: true, name, size: result.size })
+  }))
+
+  router.delete('/api/info/:name', requireSuperuser, wrap(async (req, res) => {
+    const { name } = req.params
+    const deleted = await deleteInfoPage(name)
+    if (!deleted) {
+      return res.status(404).json({ error: 'Info page not found' })
+    }
+    logger.info(`Info page "${name}" deleted by ${req.session.userName}`)
     res.json({ success: true })
   }))
 
