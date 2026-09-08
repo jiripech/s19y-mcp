@@ -293,9 +293,12 @@ browser - the pages warn about this. Options:
   (`ssh -L 12300:localhost:12300 <host>`) and open
   `http://localhost:12300/browser.app/` with `BROWSER_HOSTNAME=localhost`
 - Skip passkeys entirely: set `ADMIN_USER` and sign in on the login
-  page with that username and the 8-character password printed in the
-  server log at startup (single account, superuser rights, intended
-  for trusted networks)
+  page with that username and the 8-character one-time password
+  printed in the server log (single account, superuser rights,
+  intended for trusted networks). The password is persisted in
+  `<DATA_DIR>/admin.password` and rotates to a new one after each
+  successful login; set `ADMIN_PASSWORD` instead to force a fixed
+  password that never rotates
 
 ## Configuration
 
@@ -311,6 +314,7 @@ browser - the pages warn about this. Options:
 | `BROWSER_HOSTNAME`        | WebAuthn RP ID       | server hostname           |
 | `BROWSER_SCHEME`          | WebAuthn scheme      | `http`                    |
 | `ADMIN_USER`              | Password login user  | `none`                    |
+| `ADMIN_PASSWORD`          | Static admin password| `none` (rotating OTP)     |
 | `COMPRESSION_ENDPOINT`    | Compression endpoint | bundled (`127.0.0.1`)     |
 | `COMPRESSION_MODEL`       | Compression model    | `qwen2.5-3b-instruct`     |
 | `COMPRESSION_INTERVAL_MS` | Tick interval (ms)   | `60000`                   |
@@ -326,8 +330,11 @@ user can register without it. `BROWSER_HOSTNAME` is the WebAuthn RP ID
 (default: the server hostname). `BROWSER_SCHEME` is the scheme
 advertised to passkeys (`http` or `https`, default `http`).
 `ADMIN_USER` enables username/password login for the memory browser
-as a fallback when WebAuthn is unavailable; the 8-character password
-is generated at startup and printed to the log. The memory compressor
+as a fallback when WebAuthn is unavailable; an 8-character one-time
+password is generated, persisted in `<DATA_DIR>/admin.password`, and
+rotated (with a new password printed to the log) after each
+successful login. Setting `ADMIN_PASSWORD` disables rotation and uses
+that fixed password instead. The memory compressor
 defaults to the bundled llama-server (see
 [Memory compressor](#memory-compressor)); `COMPRESSION_ENDPOINT=none`
 disables it, and any OpenAI-compatible URL can replace it.

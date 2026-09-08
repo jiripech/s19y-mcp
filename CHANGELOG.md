@@ -7,7 +7,13 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
 
 ## [Unreleased]
 
-No unreleased changes yet.
+### Added (Unreleased)
+
+- `ADMIN_PASSWORD` environment variable: a fixed password that
+  overrides the rotating one and never rotates
+- Admin password is now a one-time password: persisted in
+  `<DATA_DIR>/admin.password` so it survives restarts, and rotated to
+  a fresh value (printed to the log) after each successful login
 
 ## [0.12.0] - 2026-09-07
 

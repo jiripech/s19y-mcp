@@ -129,6 +129,7 @@ tags mutable for `latest` to track releases.
 | `BROWSER_HOSTNAME`        | No       | WebAuthn RP ID (default: hostname)   |
 | `BROWSER_SCHEME`          | No       | WebAuthn scheme (http/https)         |
 | `ADMIN_USER`              | No       | Password login user for the browser  |
+| `ADMIN_PASSWORD`          | No       | Static admin password (overrides OTP)|
 | `COMPRESSION_ENDPOINT`    | No       | Compression endpoint (bundled)       |
 | `COMPRESSION_MODEL`       | No       | Compression model name               |
 | `COMPRESSION_INTERVAL_MS` | No       | Tick interval (default 60000)        |
