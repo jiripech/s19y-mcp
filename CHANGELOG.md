@@ -18,6 +18,19 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
   of that name in its `identityNotice` instead of being offered a
   fresh pick
 
+### Fixed (Unreleased)
+
+- Browser showing `ERR_ADDRESS_UNREACHABLE` while the bundled LLM
+  boots: the entrypoint previously started the LLM (model download +
+  health wait) before launching Node, so port 3000 was silent during
+  bootstrap. The LLM now starts in the background and the server
+  serves immediately
+- The browser now shows an LLM status banner (disabled, downloading,
+  starting, ready, error) driven by a new public `GET /api/status`
+  endpoint backed by `llm.status` markers written by the entrypoint
+- Memory compressor spamming repeated warnings when the compression
+  endpoint is not yet reachable: one warning per distinct failure
+
 ## [0.13.0] - 2026-09-08
 
 ### Added (0.13.0)

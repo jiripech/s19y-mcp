@@ -1,6 +1,6 @@
 {
   "name": "s19y-mcp",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "Self Reflexion Memory MCP Server built with agent for agents",
   "type": "module",
   "main": "server.mjs",
