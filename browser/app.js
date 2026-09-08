@@ -4,7 +4,8 @@ const state = {
   user: null,
   sources: [],
   search: '',
-  source: ''
+  source: '',
+  infoPage: null
 }
 
 const el = (tag, attrs = {}, children = []) => {
@@ -83,11 +84,102 @@ const formatDate = (iso) => {
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-const importanceClass = (value) => {
-  if (value >= 9) return 'imp-max'
-  if (value >= 7) return 'imp-high'
-  if (value >= 4) return 'imp-med'
+const priorityClass = (value) => {
+  if (value >= 90) return 'imp-critical'
+  if (value >= 67) return 'imp-high'
+  if (value >= 33) return 'imp-mid'
   return 'imp-low'
+}
+
+const formatBytes = (bytes) => {
+  if (!Number.isFinite(bytes)) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+const escapeHtml = (value) => String(value)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;')
+
+const isSafeUrl = (url) => {
+  const decoded = url.replace(/&amp;/g, '&')
+  if (/^https?:\/\//i.test(decoded)) return true
+  if (/^(\/|\.{1,2}\/|#)/.test(decoded)) return true
+  return !/^[a-z][a-z0-9+.-]*:/i.test(decoded)
+}
+
+const inlineMarkdown = (text) => {
+  let html = escapeHtml(text)
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+  html = html.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (match, label, url) => {
+    if (!isSafeUrl(url)) return label
+    const external = /^https?:\/\//i.test(url.replace(/&amp;/g, '&'))
+    const attrs = external ? ' target="_blank" rel="noopener noreferrer"' : ''
+    return `<a href="${url}"${attrs}>${label}</a>`
+  })
+  return html
+}
+
+const mdNode = (tag, text) => {
+  const node = el(tag, {})
+  node.innerHTML = inlineMarkdown(text)
+  return node
+}
+
+const renderMarkdown = (text) => {
+  const container = el('div', { class: 'md' })
+  const lines = String(text || '').split(/\r?\n/)
+  let index = 0
+  while (index < lines.length) {
+    const line = lines[index]
+    if (/^```/.test(line)) {
+      index++
+      const code = []
+      while (index < lines.length && !/^```/.test(lines[index])) {
+        code.push(lines[index])
+        index++
+      }
+      index++
+      const codeNode = el('code', {})
+      codeNode.innerHTML = escapeHtml(code.join('\n'))
+      container.append(el('pre', {}, codeNode))
+      continue
+    }
+    if (/^#{1,3}\s+/.test(line)) {
+      const level = line.match(/^#+/)[0].length
+      container.append(mdNode(`h${level}`, line.replace(/^#{1,3}\s+/, '')))
+      index++
+      continue
+    }
+    if (/^-\s+/.test(line) || /^\d+\.\s+/.test(line)) {
+      const ordered = /^\d+\.\s+/.test(line)
+      const itemPattern = ordered ? /^\d+\.\s+/ : /^-\s+/
+      const list = el(ordered ? 'ol' : 'ul', {})
+      while (index < lines.length && itemPattern.test(lines[index])) {
+        list.append(mdNode('li', lines[index].replace(/^(-|\d+\.)\s+/, '')))
+        index++
+      }
+      container.append(list)
+      continue
+    }
+    if (line.trim() === '') {
+      index++
+      continue
+    }
+    const paragraph = [line]
+    index++
+    while (index < lines.length && lines[index].trim() !== '' && !/^(```|#{1,3}\s|-\s|\d+\.\s)/.test(lines[index])) {
+      paragraph.push(lines[index])
+      index++
+    }
+    container.append(mdNode('p', paragraph.join(' ')))
+  }
+  return container
 }
 
 const SECURE_CONTEXT_HINT = 'Passkeys require a secure context (HTTPS or localhost). ' +
@@ -178,6 +270,11 @@ const logout = async () => {
   navigate('#/login')
 }
 
+const modalField = (label, control) => el('div', {}, [
+  el('label', {}, label),
+  control
+])
+
 const openMemoryModal = (memory = null, onSaved = null) => {
   const contentInput = el('textarea', { class: 'input', rows: 4, placeholder: 'Memory content', required: true })
   contentInput.value = memory ? memory.content : ''
@@ -191,17 +288,12 @@ const openMemoryModal = (memory = null, onSaved = null) => {
   const submit = el('button', { class: 'btn primary', type: 'submit' }, memory ? 'Save changes' : 'Create memory')
   const cancel = el('button', { class: 'btn', type: 'button' }, 'Cancel')
 
-  const field = (label, control) => el('div', {}, [
-    el('label', {}, label),
-    control
-  ])
-
   const form = el('form', { class: 'card modal' }, [
     el('h2', { class: 'modal-title' }, memory ? 'Edit memory' : 'New memory'),
-    field('Content', contentInput),
-    field('Importance (1-10)', importanceInput),
-    field('Tags', tagsInput),
-    field('Source', sourceInput),
+    modalField('Content', contentInput),
+    modalField('Importance (1-10)', importanceInput),
+    modalField('Tags', tagsInput),
+    modalField('Source', sourceInput),
     error,
     el('div', { class: 'modal-actions' }, [cancel, submit])
   ])
@@ -247,6 +339,78 @@ const deleteMemory = async (name, onDeleted = null) => {
   if (!confirm('Delete this memory?')) return
   try {
     await api(`/api/memories/${encodeURIComponent(name)}`, { method: 'DELETE' })
+    if (onDeleted) onDeleted()
+  } catch (err) {
+    alert(err.message)
+  }
+}
+
+const openInfoModal = async (page = null, onSaved = null) => {
+  let initialContent = ''
+  let loadError = null
+  if (page) {
+    try {
+      const data = await api(`/api/info/${encodeURIComponent(page.name)}`)
+      initialContent = data.content
+    } catch (err) {
+      loadError = err.message
+    }
+  }
+  const nameInput = el('input', { class: 'input', type: 'text', placeholder: 'e.g. usage-guide', required: true })
+  nameInput.value = page ? page.name : ''
+  if (page) nameInput.disabled = true
+  const contentInput = el('textarea', { class: 'input', rows: 12, placeholder: 'Markdown content', required: true })
+  contentInput.value = initialContent
+  const error = el('div', { class: 'message error', hidden: true })
+  if (loadError) {
+    error.textContent = loadError
+    error.hidden = false
+  }
+  const submit = el('button', { class: 'btn primary', type: 'submit' }, page ? 'Save changes' : 'Create page')
+  const cancel = el('button', { class: 'btn', type: 'button' }, 'Cancel')
+
+  const form = el('form', { class: 'card modal' }, [
+    el('h2', { class: 'modal-title' }, page ? 'Edit info page' : 'New info page'),
+    modalField('Name', nameInput),
+    modalField('Content (markdown)', contentInput),
+    error,
+    el('div', { class: 'modal-actions' }, [cancel, submit])
+  ])
+
+  const close = () => overlay.remove()
+  cancel.addEventListener('click', close)
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault()
+    error.hidden = true
+    submit.disabled = true
+    try {
+      if (page) {
+        await api(`/api/info/${encodeURIComponent(page.name)}`, { method: 'PUT', body: JSON.stringify({ content: contentInput.value }) })
+      } else {
+        await api('/api/info', { method: 'POST', body: JSON.stringify({ name: nameInput.value.trim(), content: contentInput.value }) })
+      }
+      close()
+      if (onSaved) onSaved()
+    } catch (err) {
+      error.textContent = err.message
+      error.hidden = false
+      submit.disabled = false
+    }
+  })
+
+  const overlay = el('div', { class: 'modal-overlay' }, form)
+  overlay.addEventListener('click', (event) => {
+    if (event.target === overlay) close()
+  })
+  document.body.append(overlay)
+  contentInput.focus()
+}
+
+const deleteInfoPage = async (name, onDeleted = null) => {
+  if (!confirm(`Delete info page "${name}"?`)) return
+  try {
+    await api(`/api/info/${encodeURIComponent(name)}`, { method: 'DELETE' })
     if (onDeleted) onDeleted()
   } catch (err) {
     alert(err.message)
@@ -422,15 +586,22 @@ const renderMemories = () => {
   }
 
   const memoryCard = (memory) => {
+    const priority = memory.priority ?? memory.importance * 10
+    const chips = [
+      ...(memory.tags || []).map(tag => el('span', { class: 'chip' }, tag)),
+      memory.u && memory.u !== 'Unclaimed' ? el('span', { class: 'chip' }, memory.u) : null,
+      memory.p && memory.p !== 'Unclaimed' ? el('span', { class: 'chip' }, memory.p) : null
+    ].filter(Boolean)
     return el('article', { class: 'card memory-card' }, [
       el('div', { class: 'card-head' }, [
-        el('span', { class: `badge ${importanceClass(memory.importance)}` }, `Importance ${memory.importance}`),
+        memory.exp != null && memory.exp * 1000 < Date.now()
+          ? el('span', { class: 'badge imp-critical' }, 'Expired')
+          : null,
+        el('span', { class: `badge ${priorityClass(priority)}` }, `Priority ${priority}`),
         memory.source ? el('span', { class: 'source' }, memory.source) : null
       ]),
       el('p', { class: 'memory-content' }, memory.content || memory.name),
-      memory.tags && memory.tags.length > 0
-        ? el('div', { class: 'chips' }, memory.tags.map(tag => el('span', { class: 'chip' }, tag)))
-        : null,
+      chips.length > 0 ? el('div', { class: 'chips' }, chips) : null,
       isSuperuser && !memory.system
         ? el('div', { class: 'card-actions' }, [
             el('button', {
@@ -496,6 +667,7 @@ const renderMemories = () => {
           onclick: () => openMemoryModal(null, loadMemories)
         }, 'New memory')
       : null,
+    el('a', { class: 'btn small', href: '#/info' }, 'Info'),
     isSuperuser ? el('a', { class: 'btn small', href: '#/admin' }, 'Admin') : null,
     el('span', { class: 'user-badge' }, [
       el('span', { class: 'user-badge-name' }, state.user.name),
@@ -596,6 +768,51 @@ const renderAdmin = () => {
     }
   })
 
+  const infoList = el('div', { class: 'user-list' })
+
+  const loadInfoPages = async () => {
+    try {
+      const data = await api('/api/info')
+      status.hidden = true
+      infoList.replaceChildren()
+      if (data.pages.length === 0) {
+        infoList.append(el('div', { class: 'empty' }, 'No info pages'))
+        return
+      }
+      for (const page of data.pages) {
+        infoList.append(el('div', { class: 'card user-row' }, [
+          el('div', {}, [
+            el('span', { class: 'user-name' }, page.name),
+            el('span', { class: 'user-meta' }, `${formatBytes(page.size)} · updated ${formatDate(page.updatedAt)}`)
+          ]),
+          el('div', { class: 'card-actions' }, [
+            el('button', {
+              class: 'btn small',
+              type: 'button',
+              onclick: () => {
+                state.infoPage = page.name
+                navigate('#/info')
+              }
+            }, 'Open'),
+            el('button', {
+              class: 'btn small',
+              type: 'button',
+              onclick: () => openInfoModal(page, loadInfoPages)
+            }, 'Edit'),
+            el('button', {
+              class: 'btn small danger',
+              type: 'button',
+              onclick: () => deleteInfoPage(page.name, loadInfoPages)
+            }, 'Delete')
+          ])
+        ]))
+      }
+    } catch (err) {
+      status.textContent = err.message
+      status.hidden = false
+    }
+  }
+
   const topbar = el('header', { class: 'topbar' }, [
     el('span', { class: 'brand' }, 'S19y Memory'),
     el('span', { class: 'spacer' }),
@@ -617,11 +834,142 @@ const renderAdmin = () => {
       el('p', { class: 'hint' }, 'New users need this token to register, unless the first account is being created.'),
       tokenForm,
       tokenOk,
-      tokenError
+      tokenError,
+      el('h2', { class: 'section-title' }, 'Info pages'),
+      el('p', { class: 'hint' }, 'Markdown pages every signed-in user can read under Info.'),
+      infoList
     ])
   ]))
 
   loadUsers()
+  loadInfoPages()
+}
+
+const renderInfo = () => {
+  const isSuperuser = state.user?.role === 'superuser'
+  const status = el('div', { class: 'message error', hidden: true })
+  const pageList = el('div', { class: 'info-list' })
+  const pageView = el('article', { class: 'card info-view' })
+  const searchInput = el('input', { class: 'input', type: 'search', placeholder: 'Search pages…' })
+
+  let pages = []
+  let contents = {}
+  let selected = state.infoPage
+  state.infoPage = null
+
+  const renderView = () => {
+    pageView.replaceChildren()
+    if (!selected) {
+      pageView.append(el('div', { class: 'empty' }, 'No info pages'))
+      return
+    }
+    pageView.append(el('h2', { class: 'info-title' }, selected))
+    if (isSuperuser) {
+      pageView.append(el('div', { class: 'card-actions' }, [
+        el('button', {
+          class: 'btn small',
+          type: 'button',
+          onclick: () => openInfoModal({ name: selected }, loadPages)
+        }, 'Edit'),
+        el('button', {
+          class: 'btn small danger',
+          type: 'button',
+          onclick: () => deleteInfoPage(selected, loadPages)
+        }, 'Delete')
+      ]))
+    }
+    pageView.append(renderMarkdown(contents[selected] || ''))
+  }
+
+  const renderList = () => {
+    const query = searchInput.value.trim().toLowerCase()
+    pageList.replaceChildren()
+    const filtered = query
+      ? pages.filter(page => page.name.toLowerCase().includes(query) || String(contents[page.name] || '').toLowerCase().includes(query))
+      : pages
+    if (filtered.length === 0) {
+      pageList.append(el('div', { class: 'empty' }, query ? 'No matches' : 'No info pages'))
+      return
+    }
+    for (const page of filtered) {
+      pageList.append(el('button', {
+        class: page.name === selected ? 'info-item active' : 'info-item',
+        type: 'button',
+        onclick: () => {
+          selected = page.name
+          renderList()
+          renderView()
+        }
+      }, [
+        el('span', { class: 'info-item-name' }, page.name),
+        el('span', { class: 'info-item-meta' }, `${formatBytes(page.size)} · updated ${formatDate(page.updatedAt)}`)
+      ]))
+    }
+  }
+
+  const loadPages = async () => {
+    try {
+      const data = await api('/api/info')
+      pages = data.pages
+      contents = {}
+      await Promise.all(pages.map(async (page) => {
+        try {
+          const pageData = await api(`/api/info/${encodeURIComponent(page.name)}`)
+          contents[page.name] = pageData.content
+        } catch {
+          contents[page.name] = ''
+        }
+      }))
+      if (!pages.some(page => page.name === selected)) {
+        const preferred = pages.find(page => page.name === 'index') || pages[0]
+        selected = preferred ? preferred.name : null
+      }
+      status.hidden = true
+      renderList()
+      renderView()
+    } catch (err) {
+      pageList.replaceChildren()
+      pageView.replaceChildren()
+      status.textContent = err.message
+      status.hidden = false
+    }
+  }
+
+  searchInput.addEventListener('input', () => renderList())
+
+  const topbar = el('header', { class: 'topbar' }, [
+    el('span', { class: 'brand' }, 'S19y Memory'),
+    el('span', { class: 'spacer' }),
+    isSuperuser
+      ? el('button', {
+          class: 'btn small primary',
+          type: 'button',
+          onclick: () => openInfoModal(null, loadPages)
+        }, 'New page')
+      : null,
+    el('a', { class: 'btn small', href: '#/memories' }, 'Back to memories'),
+    el('span', { class: 'user-badge' }, [
+      el('span', { class: 'user-badge-name' }, state.user.name),
+      el('span', { class: 'user-badge-role' }, state.user.role)
+    ]),
+    el('button', { class: 'btn small', type: 'button', onclick: logout }, 'Logout')
+  ])
+
+  pageList.append(el('div', { class: 'empty' }, 'Loading…'))
+  pageView.append(el('div', { class: 'empty' }, 'Loading…'))
+
+  render(el('div', { class: 'page-shell' }, [
+    topbar,
+    el('main', { class: 'page' }, [
+      status,
+      el('div', { class: 'info-layout' }, [
+        el('aside', { class: 'info-side' }, [searchInput, pageList]),
+        el('section', { class: 'info-main' }, pageView)
+      ])
+    ])
+  ]))
+
+  loadPages()
 }
 
 const route = () => {
@@ -640,6 +988,10 @@ const route = () => {
     } else {
       navigate('#/memories')
     }
+    return
+  }
+  if (hash === '#/info') {
+    renderInfo()
     return
   }
   if (hash === '#/login' || hash === '#/register') {
