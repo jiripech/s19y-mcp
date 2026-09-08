@@ -9,6 +9,42 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
 
 No unreleased changes yet.
 
+## [0.12.0] - 2026-09-07
+
+### Added (0.12.0)
+
+- Bundled language model: `llama-server` (llama.cpp, CPU) ships in
+  the image and serves an OpenAI-compatible API on localhost; the
+  Qwen2.5-3B GGUF model (about 2 GB) is downloaded to the data
+  directory on first start, so no external model service or compose
+  setup is needed (`LLM_ENABLED`, `LLM_MODEL_URL`, `LLM_MODEL_PATH`,
+  `LLM_PORT`, `LLM_CONTEXT`, `LLM_THREADS`)
+- Memory attributes: `u` (originating user), `p` (project), `exp`
+  (UNIX expiry), `ttl` (input only, converted to `exp`), `cr`
+  (compression requested, cannot be recalled) and server-managed
+  `cs` (compression status)
+- Priority replaces importance: range 0-100 with default 50; all
+  stored `importance: N` (1-10) observations are migrated to
+  `priority: N*10` at first startup
+- Include/exclude record filters on `search_memories`,
+  `list_memories` and `count_memories` with special keys
+  `minPriority` and `tag`
+- Memory compressor: a background job compresses memories requested
+  with `cr: true` through an OpenAI-compatible endpoint (bundled
+  llama-server by default, `COMPRESSION_ENDPOINT=none` to disable),
+  stores the result as a `compressed:` observation next to the
+  original, and flips `cs` to done
+- Priority 90+ memories are treated as instructions: the server
+  transposes them automatically into a server-owned `AGENTS.md`
+  served at `/info/agents.md` (API key required)
+- `/info` markdown pages: seeded into the data directory at first
+  start, readable by agents via API-key endpoints and by humans in
+  the memory browser (view with client-side search); superuser can
+  create, edit and delete pages in the browser admin area
+- Memory browser shows priority buckets (0-32/33-66/67-89/90+),
+  user and project chips, an Expired badge for memories past their
+  `exp`, and the new Info view
+
 ## [0.11.2] - 2026-09-07
 
 ### Fixed (0.11.2)
@@ -304,7 +340,8 @@ Initial release of the S19y MCP Server with the following features:
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html
-[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.11.2...HEAD
+[unreleased]: https://github.com/jiripech/s19y-mcp/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/jiripech/s19y-mcp/compare/v0.11.2...v0.12.0
 [0.11.2]: https://github.com/jiripech/s19y-mcp/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/jiripech/s19y-mcp/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/jiripech/s19y-mcp/compare/v0.10.0...v0.11.0

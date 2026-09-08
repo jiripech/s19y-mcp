@@ -106,16 +106,16 @@ allow them in the opencode `permission` block:
 }
 ```
 
-| Tool              | Description                                           |
-| ----------------- | ----------------------------------------------------- |
-| `store_memory`    | Store memories (optional `source`, batch `memories`)  |
-| `update_memory`   | Update an existing memory (content, tags, source)     |
-| `retrieve_memory` | Retrieve a memory by name (optional `source` filter)  |
-| `search_memories` | Search memories (optional `source` filter)            |
-| `list_memories`   | List all stored memories (optional `source` filter)   |
-| `count_memories`  | Count stored memories (optional `source` filter)      |
-| `list_sources`    | List all unique sources with memory counts            |
-| `delete_memory`   | Delete a memory (optional `source` guard)             |
+| Tool              | Description                                          |
+| ----------------- | ---------------------------------------------------- |
+| `store_memory`    | Store memories (batch, priority, attributes)         |
+| `update_memory`   | Update an existing memory (all attributes)           |
+| `retrieve_memory` | Retrieve a memory by name (optional `source` filter) |
+| `search_memories` | Search memories (source and include/exclude filters) |
+| `list_memories`   | List memories (source and include/exclude filters)   |
+| `count_memories`  | Count memories (source and include/exclude filters)  |
+| `list_sources`    | List all unique sources with memory counts           |
+| `delete_memory`   | Delete a memory (optional `source` guard)            |
 
 Restart opencode after changing the config.
 
@@ -143,6 +143,68 @@ Agents are told to treat `rw: 0` memories as read-only; the system
 enforces this only for server-owned memories such as `agent_names`.
 Memories without any source are attributed to **Unclaimed** in the
 memory browser.
+
+### Memory attributes
+
+Beyond `source`, memories may carry structured attributes passed to
+`store_memory` / `update_memory`:
+
+- `priority` (0-100, default 50) replaces the old 1-10 importance;
+  existing memories are migrated automatically at first startup
+  (N -> N*10)
+- `u` - originating user (`$USER` of the system that stored it)
+- `p` - originating project (directory or repository name)
+- `exp` - UNIX expiry timestamp; `ttl` (seconds) is converted to
+  `exp` on input and never stored
+- `cr` - compression requested (cannot be recalled); `cs` is the
+  server-managed status (0 pending, 1 done)
+
+`search_memories`, `list_memories` and `count_memories` accept
+`include` / `exclude` filter objects with any attribute key plus the
+special `minPriority` and `tag` keys:
+
+```json
+{
+  "include": { "u": "jiri.pech", "minPriority": 91 },
+  "exclude": { "p": "s19y-mcp" }
+}
+```
+
+Include requires all keys to match; exclude drops any match.
+
+### Memory compressor
+
+The image bundles `llama-server` (llama.cpp) and enables the
+compressor out of the box: on first start the model file (Qwen2.5-3B
+Instruct, 4-bit GGUF, about 2 GB) is downloaded into the data
+directory and served locally. When `COMPRESSION_ENDPOINT` and
+`COMPRESSION_MODEL` are set, a background job compresses memories
+requested with `cr: true` through any OpenAI-compatible endpoint:
+same meaning, far fewer tokens. The compressed text is stored as a
+`compressed:` observation next to the original (kept as a safety
+net) and the `cs` flag flips from pending to done. Failures are
+logged and retried on the next tick (default 60s,
+`COMPRESSION_INTERVAL_MS`).
+
+To run without the bundled model (for example on a RAM-constrained
+host), set `LLM_ENABLED=false` and point `COMPRESSION_ENDPOINT` at
+an external OpenAI-compatible API, or set `COMPRESSION_ENDPOINT=none`
+to disable compression entirely.
+
+### Info pages and server instructions
+
+The server serves markdown info pages:
+
+- Humans: the `#/info` view in the memory browser (searchable);
+  the superuser edits pages in the admin area
+- Agents: `GET /info/` (list) and `GET /info/<name>` with the
+  `X-API-Key` header, plus `GET /info/agents.md`
+
+Pages live in `<DATA_DIR>/info/` and are seeded on first start.
+Memories with priority 90+ are treated as instructions: the server
+automatically transposes them into a server-owned `AGENTS.md` file
+served at `/info/agents.md`, so agents can load user instructions
+at session start with a single HTTP call.
 
 ### Details
 
@@ -237,18 +299,27 @@ browser - the pages warn about this. Options:
 
 ## Configuration
 
-| Variable             | Description              | Default                   |
-| -------------------- | ------------------------ | ------------------------- |
-| `PORT`               | Server port              | `3000`                    |
-| `API_KEY`            | MCP client auth key      | `none`                    |
-| `DATA_DIR`           | Data storage directory   | `/app/data`               |
-| `MEMORY_FILE_PATH`   | Memory file location     | `<DATA_DIR>/memory.jsonl` |
-| `LOG_LEVEL`          | Log level (info/debug)   | `info`                    |
-| `NODE_ENV`           | Environment              | `development`             |
-| `REGISTRATION_TOKEN` | Registration token       | `none`                    |
-| `BROWSER_HOSTNAME`   | WebAuthn RP ID           | server hostname           |
-| `BROWSER_SCHEME`     | WebAuthn scheme          | `http`                    |
-| `ADMIN_USER`         | Password login user      | `none`                    |
+| Variable                  | Description          | Default                   |
+| ------------------------- | -------------------- | ------------------------- |
+| `PORT`                    | Server port          | `3000`                    |
+| `API_KEY`                 | MCP client auth key  | `none`                    |
+| `DATA_DIR`                | Data directory       | `/app/data`               |
+| `MEMORY_FILE_PATH`        | Memory file location | `<DATA_DIR>/memory.jsonl` |
+| `LOG_LEVEL`               | Log level            | `info`                    |
+| `NODE_ENV`                | Environment          | `development`             |
+| `REGISTRATION_TOKEN`      | Registration token   | `none`                    |
+| `BROWSER_HOSTNAME`        | WebAuthn RP ID       | server hostname           |
+| `BROWSER_SCHEME`          | WebAuthn scheme      | `http`                    |
+| `ADMIN_USER`              | Password login user  | `none`                    |
+| `COMPRESSION_ENDPOINT`    | Compression endpoint | bundled (`127.0.0.1`)     |
+| `COMPRESSION_MODEL`       | Compression model    | `qwen2.5-3b-instruct`     |
+| `COMPRESSION_INTERVAL_MS` | Tick interval (ms)   | `60000`                   |
+| `LLM_ENABLED`             | Bundled model on/off | `true`                    |
+| `LLM_MODEL_URL`           | GGUF download URL    | Qwen2.5-3B (HF)           |
+| `LLM_MODEL_PATH`          | GGUF file location   | `<DATA_DIR>/model.gguf`   |
+| `LLM_PORT`                | llama-server port    | `8080`                    |
+| `LLM_CONTEXT`             | llama-server context | `4096`                    |
+| `LLM_THREADS`             | llama-server threads | `4`                       |
 
 `REGISTRATION_TOKEN` is required to register browser users; the first
 user can register without it. `BROWSER_HOSTNAME` is the WebAuthn RP ID
@@ -256,7 +327,10 @@ user can register without it. `BROWSER_HOSTNAME` is the WebAuthn RP ID
 advertised to passkeys (`http` or `https`, default `http`).
 `ADMIN_USER` enables username/password login for the memory browser
 as a fallback when WebAuthn is unavailable; the 8-character password
-is generated at startup and printed to the log.
+is generated at startup and printed to the log. The memory compressor
+defaults to the bundled llama-server (see
+[Memory compressor](#memory-compressor)); `COMPRESSION_ENDPOINT=none`
+disables it, and any OpenAI-compatible URL can replace it.
 
 Every `store_memory` and `delete_memory` call writes the full memory
 graph to disk immediately, so data survives container restarts. The
@@ -276,38 +350,41 @@ reverse proxy.
 
 ### Logged events
 
-| Event | Level | Details included |
-| ----- | ----- | ---------------- |
-| Memory restore at startup | info | counts and file path |
-| Name pool restore at startup | info | available count, file path |
-| Agent identity claimed | info | picked name, next variant |
-| Memory write or delete | info | memory name, importance, source |
-| MCP session connect / close | info | agent name, session ID, IP, transport |
-| Agent name collision | warn | requested name, fallback |
-| Cross-source delete attempt | error (`[CRIT]`) | agent name, target memory |
-| Browser registration started | info | user name, role, IP |
-| Browser registration rejected | warn | user name, reason, IP |
-| Passkey registered | info | user name, IP |
-| Passkey sign-in / sign-out | info | user name, IP |
-| Passkey verification failure | warn | user ID, IP |
-| Unknown login attempt | warn | requested name, IP |
-| Password sign-in | info | user name, IP |
-| Password login rejected | warn | requested name, IP |
-| Protected memory tamper | error (`[CRIT]`) | memory name, attempt type |
-| User deleted (superuser) | info | target, actor |
-| Registration token changed | info | actor |
-| HTTP request (debug only) | debug | method, path, status, duration |
+| Event                     | Level          | Details included                |
+| ------------------------- | -------------- | ------------------------------- |
+| Memory restore            | info           | counts, file path               |
+| Name pool restore         | info           | count, file path                |
+| Agent identity claimed    | info           | picked name, next variant       |
+| Memory write or delete    | info           | name, importance, source        |
+| Session connect / close   | info           | name, session ID, IP, transport |
+| Agent name collision      | warn           | requested name, fallback        |
+| Cross-source delete       | error `[CRIT]` | agent name, target memory       |
+| Registration started      | info           | user name, role, IP             |
+| Registration rejected     | warn           | user name, reason, IP           |
+| Passkey registered        | info           | user name, IP                   |
+| Passkey sign-in / out     | info           | user name, IP                   |
+| Verification failure      | warn           | user ID, IP                     |
+| Unknown login attempt     | warn           | requested name, IP              |
+| Password sign-in          | info           | user name, IP                   |
+| Password login rejected   | warn           | requested name, IP              |
+| Protected memory tamper   | error `[CRIT]` | memory name, attempt type       |
+| User deleted (superuser)  | info           | target, actor                   |
+| Token changed             | info           | actor                           |
+| HTTP request (debug only) | debug          | method, path, status, ms        |
 
 ## API Reference
 
 The server provides the following MCP tools:
 
-- `store_memory` - Store memories (optional `source`, batch mode)
-- `update_memory` - Update an existing memory by name
+- `store_memory` - Store memories; supports batch `memories`,
+  `priority` (0-100), `u`, `p`, `exp`/`ttl`, `cr`
+- `update_memory` - Update an existing memory, all attributes
+  mergeable
 - `retrieve_memory` - Retrieve a memory by name, optionally filtered by `source`
-- `search_memories` - Search memories, optionally filtered by `source`
-- `list_memories` - List all memories, optionally filtered by `source`
-- `count_memories` - Count memories, optionally filtered by `source`
+- `search_memories` - Search memories, `source` and
+  include/exclude filters
+- `list_memories` - List memories, `source` and include/exclude filters
+- `count_memories` - Count memories, `source` and include/exclude filters
 - `list_sources` - List all unique sources with memory counts
 - `delete_memory` - Delete a memory (optional `source` guard)
 

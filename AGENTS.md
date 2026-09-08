@@ -120,15 +120,24 @@ tags mutable for `latest` to track releases.
 
 ## Environment Variables
 
-| Variable             | Required | Description                               |
-|----------------------|----------|-------------------------------------------|
-| `PORT`               | No       | Server port (default: 3000)               |
-| `API_KEY`            | Yes      | Authentication key for MCP clients        |
-| `DATA_DIR`           | No       | Data storage directory (/app/data)        |
-| `REGISTRATION_TOKEN` | No       | Registration token for browser users      |
-| `BROWSER_HOSTNAME`   | No       | WebAuthn RP ID (default: server hostname) |
-| `BROWSER_SCHEME`     | No       | WebAuthn scheme (http/https)              |
-| `ADMIN_USER`         | No       | Password login user for the browser       |
+| Variable                  | Required | Description                          |
+| ------------------------- | -------- | ------------------------------------ |
+| `PORT`                    | No       | Server port (default: 3000)          |
+| `API_KEY`                 | Yes      | Authentication key for MCP clients   |
+| `DATA_DIR`                | No       | Data storage directory (/app/data)   |
+| `REGISTRATION_TOKEN`      | No       | Registration token for browser users |
+| `BROWSER_HOSTNAME`        | No       | WebAuthn RP ID (default: hostname)   |
+| `BROWSER_SCHEME`          | No       | WebAuthn scheme (http/https)         |
+| `ADMIN_USER`              | No       | Password login user for the browser  |
+| `COMPRESSION_ENDPOINT`    | No       | Compression endpoint (bundled)       |
+| `COMPRESSION_MODEL`       | No       | Compression model name               |
+| `COMPRESSION_INTERVAL_MS` | No       | Tick interval (default 60000)        |
+| `LLM_ENABLED`             | No       | Bundled llama-server on/off (true)   |
+| `LLM_MODEL_URL`           | No       | GGUF download URL (Qwen2.5-3B)       |
+| `LLM_MODEL_PATH`          | No       | GGUF path (/app/data/model.gguf)     |
+| `LLM_PORT`                | No       | llama-server port (default: 8080)    |
+| `LLM_CONTEXT`             | No       | llama-server context (default: 4096) |
+| `LLM_THREADS`             | No       | llama-server threads (default: 4)    |
 
 ## Markdown Rules
 
