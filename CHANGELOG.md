@@ -30,6 +30,11 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
   endpoint backed by `llm.status` markers written by the entrypoint
 - Memory compressor spamming repeated warnings when the compression
   endpoint is not yet reachable: one warning per distinct failure
+- Automatic transposition of priority 90+ memories into `AGENTS.md`
+  crashed with `agentsFile is not a function`, so instructions were
+  never transposed and memory updates could duplicate them: the file
+  path is now used correctly and a marker in the file prevents double
+  transposition
 
 ## [0.13.0] - 2026-09-08
 

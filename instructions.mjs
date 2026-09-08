@@ -23,9 +23,6 @@ export async function transposeInstruction(entity) {
   if (!observations.some(o => /^priority: (9[0-9]|100)$/.test(o))) {
     return
   }
-  if (observations.some(o => o === TRANSPOSE_MARKER(entity.name))) {
-    return
-  }
   const uObs = observations.find(o => o.startsWith('u: '))
   const pObs = observations.find(o => o.startsWith('p: '))
   const content = observations.find(o => o && o.trim() && !CONTENT_PATTERN.test(o))
@@ -43,9 +40,12 @@ export async function transposeInstruction(entity) {
     } catch {
       await initInstructions()
     }
+    if (current.includes(TRANSPOSE_MARKER(entity.name))) {
+      return
+    }
     const tmpFile = `${agentsFile}.tmp`
     await writeFile(tmpFile, current + section)
-    await rename(tmpFile, agentsFile())
+    await rename(tmpFile, agentsFile)
     logger.info(`Instruction from memory ${entity.name} transposed into AGENTS.md`)
   } catch (err) {
     logger.error(`Failed to transpose memory ${entity.name} into AGENTS.md: ${err.message}`)
