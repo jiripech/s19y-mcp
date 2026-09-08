@@ -12,6 +12,7 @@ import { initInstructions } from './instructions.mjs'
 import { createBrowserRouter, generateAdminPassword } from './browser-routes.mjs'
 import { logger } from './logger.mjs'
 import { names } from './names.mjs'
+import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -19,7 +20,8 @@ const app = express()
 const PORT = process.env.PORT || 3000
 const API_KEY = process.env.API_KEY || 'change-to-your-api-key'
 const ADMIN_USER = process.env.ADMIN_USER || null
-const ADMIN_PASSWORD = ADMIN_USER ? generateAdminPassword() : null
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null
+const DATA_DIR = process.env.DATA_DIR || '/app/data'
 
 app.set('trust proxy', true)
 
@@ -180,15 +182,55 @@ app.all('/mcp', authMiddleware, async (req, res) => {
   }
 })
 
+async function resolveStoredPassword() {
+  if (ADMIN_PASSWORD) {
+    logger.info(`Browser password login enabled for user "${ADMIN_USER}", static password from ADMIN_PASSWORD.`)
+    return { password: ADMIN_PASSWORD, rotate: null }
+  }
+  const file = join(DATA_DIR, 'admin.password')
+  const rotate = async () => {
+    const next = generateAdminPassword()
+    try {
+      await writeFile(file, next)
+    } catch (err) {
+      logger.warn(`Could not persist new admin password to ${file}: ${err.message}`)
+    }
+    logger.info(`Browser one-time password for user "${ADMIN_USER}" consumed; new password: ${next}`)
+    return next
+  }
+  let password = null
+  try {
+    await mkdir(DATA_DIR, { recursive: true })
+    password = (await readFile(file, 'utf8')).trim()
+  } catch {
+    password = null
+  }
+  if (password) {
+    logger.info(`Browser password login enabled for user "${ADMIN_USER}", using stored one-time password.`)
+  } else {
+    password = generateAdminPassword()
+    try {
+      await writeFile(file, password)
+    } catch (err) {
+      logger.warn(`Could not persist admin password to ${file}: ${err.message}`)
+    }
+    logger.info(`Browser one-time password login for user "${ADMIN_USER}", current password: ${password}`)
+  }
+  return { password, rotate }
+}
+
+const storedAdmin = ADMIN_USER ? await resolveStoredPassword() : null
+
 if (ADMIN_USER) {
-  logger.info(`Browser password login enabled for user "${ADMIN_USER}", password: ${ADMIN_PASSWORD}`)
+  logger.info(`Browser password login enabled for user "${ADMIN_USER}".`)
 }
 
 app.use('/info', createInfoRouter(API_KEY))
 
 app.use('/browser.app', createBrowserRouter(manager, {
   adminUser: ADMIN_USER,
-  adminPassword: ADMIN_PASSWORD
+  adminPassword: storedAdmin ? storedAdmin.password : null,
+  rotateAdminPasswordOnUse: storedAdmin ? storedAdmin.rotate : null
 }))
 
 app.listen(PORT, () => {

@@ -100,6 +100,8 @@ const passwordMatches = (candidate, expected) => {
 
 export function createBrowserRouter(manager, options = {}) {
   const { adminUser = null, adminPassword = null } = options
+  const rotateOnUse = options.rotateAdminPasswordOnUse || null
+  let currentAdminPassword = adminPassword
   const router = Router()
   const wrap = (fn) => (req, res, next) =>
     Promise.resolve(fn(req, res, next)).catch(next)
@@ -215,9 +217,15 @@ export function createBrowserRouter(manager, options = {}) {
     if (!name) {
       return res.status(400).json({ error: 'Name required' })
     }
-    if (adminUser && adminPassword && password) {
-      if (name === adminUser && passwordMatches(password, adminPassword)) {
-        logger.info(`User "${adminUser}" signed in with password from ${req.ip}`)
+    if (adminUser && currentAdminPassword && password) {
+      if (name === adminUser && passwordMatches(password, currentAdminPassword)) {
+        if (rotateOnUse) {
+          const next = await rotateOnUse()
+          if (next) currentAdminPassword = next
+          logger.info(`User "${adminUser}" signed in with one-time password from ${req.ip}`)
+        } else {
+          logger.info(`User "${adminUser}" signed in with password from ${req.ip}`)
+        }
         const token = createSession('password-admin', adminUser, 'superuser')
         res.cookie(cookieName, token, cookieOptions)
         return res.json({ user: { id: 'password-admin', name: adminUser, role: 'superuser' }, passwordLogin: true })

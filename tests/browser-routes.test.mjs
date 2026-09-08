@@ -26,4 +26,37 @@ describe('Browser router module', () => {
       assert.match(password, /^[a-z0-9]{8}$/)
     }
   })
+
+  it('rotates the admin one-time password after a successful password login', async () => {
+    const express = (await import('express')).default
+    const { createBrowserRouter } = await import('../browser-routes.mjs')
+    const { cookieName } = await import('../browser-sessions.mjs')
+
+    let rotated = null
+    const first = 'aaaaaaaa'
+    const router = createBrowserRouter({}, {
+      adminUser: 'admin',
+      adminPassword: first,
+      rotateAdminPasswordOnUse: async () => {
+        rotated = 'bbbbbbbb'
+        return rotated
+      }
+    })
+    const app = express()
+    app.use(express.json())
+    app.use(router)
+    const server = app.listen(0)
+    const base = `http://127.0.0.1:${server.address().port}`
+    try {
+      const res = await fetch(`${base}/api/login/begin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'admin', password: first })
+      })
+      assert.strictEqual(res.status, 200)
+      assert.strictEqual(rotated, 'bbbbbbbb')
+    } finally {
+      server.close()
+    }
+  })
 })
