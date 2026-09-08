@@ -4,9 +4,16 @@ import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js'
 import { createManager, createServer } from './memory-server.mjs'
+import { migrateGraph } from './migrate.mjs'
+import { startCompressor } from './compressor.mjs'
+import { initInfoStore } from './info-store.mjs'
+import { createInfoRouter } from './info-routes.mjs'
+import { initInstructions } from './instructions.mjs'
 import { createBrowserRouter, generateAdminPassword } from './browser-routes.mjs'
 import { logger } from './logger.mjs'
 import { names } from './names.mjs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -21,6 +28,10 @@ app.use(express.json())
 const sessions = new Map()
 const usedNames = new Set()
 const manager = await createManager()
+await migrateGraph(manager)
+startCompressor(manager)
+await initInfoStore(join(dirname(fileURLToPath(import.meta.url)), 'info'))
+await initInstructions()
 
 const randomName = () => {
   const unused = names.filter(n => !usedNames.has(n))
@@ -172,6 +183,8 @@ app.all('/mcp', authMiddleware, async (req, res) => {
 if (ADMIN_USER) {
   logger.info(`Browser password login enabled for user "${ADMIN_USER}", password: ${ADMIN_PASSWORD}`)
 }
+
+app.use('/info', createInfoRouter(API_KEY))
 
 app.use('/browser.app', createBrowserRouter(manager, {
   adminUser: ADMIN_USER,
