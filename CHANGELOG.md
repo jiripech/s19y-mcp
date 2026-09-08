@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog][kac], and this project adheres to
 [Semantic Versioning][semver].
 
+## [Unreleased]
+
+### Added (Unreleased)
+
+- Agent registry: every connection is persisted in `<DATA_DIR>/
+  agents.json` (session UUID, codename, transport, client IP, first
+  and last seen, connection count) and restored at startup, so agent
+  identities survive container replacements
+- Claimed pool identities are stored on the registry record; a
+  reconnecting session with a previously claimed identity is reminded
+  of that name in its `identityNotice` instead of being offered a
+  fresh pick
+
 ## [0.13.0] - 2026-09-08
 
 ### Added (0.13.0)

@@ -11,6 +11,7 @@ import { createInfoRouter } from './info-routes.mjs'
 import { initInstructions } from './instructions.mjs'
 import { createBrowserRouter, generateAdminPassword } from './browser-routes.mjs'
 import { logger } from './logger.mjs'
+import { initAgentRegistry, rememberConnection } from './agent-registry.mjs'
 import { names } from './names.mjs'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
@@ -34,6 +35,7 @@ await migrateGraph(manager)
 startCompressor(manager)
 await initInfoStore(join(dirname(fileURLToPath(import.meta.url)), 'info'))
 await initInstructions()
+await initAgentRegistry()
 
 const randomName = () => {
   const unused = names.filter(n => !usedNames.has(n))
@@ -106,10 +108,11 @@ const wrap = (fn) => (req, res, next) =>
 app.get('/sse', authMiddleware, wrap(async (req, res) => {
   const transport = new SSEServerTransport('/messages', res)
   const name = assignName(req)
-  const sessionCtx = { name, identified: Boolean(req.headers['x-agent-name']) }
+  const sessionCtx = { name, identified: Boolean(req.headers['x-agent-name']), uuid: transport.sessionId }
   const server = await createServer(manager, { session: sessionCtx })
 
   sessions.set(transport.sessionId, { transport, server, name, ctx: sessionCtx })
+  await rememberConnection({ uuid: transport.sessionId, name, ip: req.ip, transport: 'sse' })
   logger.info(`${name} (${transport.sessionId}) connected from ${req.ip} (SSE)`)
 
   req.on('close', () => {
@@ -141,13 +144,15 @@ app.all('/mcp', authMiddleware, async (req, res) => {
       transport = sessions.get(sessionId).transport
     } else if (req.method === 'POST' && !sessionId && isInitializeRequest(req.body)) {
       const name = assignName(req)
-      const sessionCtx = { name, identified: Boolean(req.headers['x-agent-name']) }
+      const sessionCtx = { name, identified: Boolean(req.headers['x-agent-name']), uuid: null }
       const sessionRef = { sid: null }
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
         onsessioninitialized: (sid) => {
           sessionRef.sid = sid
+          sessionCtx.uuid = sid
           sessions.set(sid, { transport, server, name, ctx: sessionCtx })
+          rememberConnection({ uuid: sid, name, ip: req.ip, transport: 'streamable-http' })
           logger.info(`${name} (${sid}) connected from ${req.ip} (Streamable HTTP)`)
         }
       })

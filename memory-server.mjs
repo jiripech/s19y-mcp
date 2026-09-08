@@ -5,6 +5,7 @@ import { KnowledgeGraphManager } from '@modelcontextprotocol/server-memory/dist/
 import { z } from 'zod'
 import { logger } from './logger.mjs'
 import { initNamePool, claimName, isProtectedMemory } from './name-pool.mjs'
+import { rememberIdentity, findPreviousClaim } from './agent-registry.mjs'
 import { transposeInstruction } from './instructions.mjs'
 
 async function resolveMemoryPath() {
@@ -41,12 +42,20 @@ export async function createServer(manager, options = {}) {
   const session = options.session || null
   const withNotice = (result) => {
     if (session && !session.identified) {
-      result.identityNotice =
+      const remembered = findPreviousClaim({ uuid: session.uuid, name: session.name })
+      let notice =
         `Anonymous session (codename "${session.name}"). Before writing ` +
         'anything, establish a permanent identity: retrieve the memory ' +
         '"agent_names", pick an available name, tell your user which name ' +
         'you picked, then pass it as source on every store_memory and ' +
         'update_memory call.'
+      if (remembered) {
+        notice +=
+          ` This session has a previously claimed identity "` +
+          `${remembered}". If that was yours, reuse it as source instead ` +
+          'of picking a new name.'
+      }
+      result.identityNotice = notice
     }
     return result
   }
@@ -57,6 +66,11 @@ export async function createServer(manager, options = {}) {
         session.source = source
       } else if (session.source !== source) {
         logger.warn(`Session identity "${session.source}" does not match source "${source}" used in a tool call`)
+      }
+      if (session.uuid) {
+        rememberIdentity(session.uuid, source).catch(err =>
+          logger.warn(`Agent registry update failed: ${err.message}`)
+        )
       }
     }
   }

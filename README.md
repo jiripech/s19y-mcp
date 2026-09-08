@@ -261,6 +261,15 @@ modifications. The available-name list is persisted in `names.txt`
 inside the data directory (seeded on first start) and restored from
 there on startup.
 
+Every connection is recorded in `agents.json` inside the data
+directory: the session UUID, the assigned codename, the transport and
+client IP, and the first and last seen timestamps. When a session
+claims a pool identity (uses a name as `source`), the claim is stored
+on the same record, so identity survives container replacements. A
+session that reconnects without a stable `X-Agent-Name` header but
+with a previously claimed identity is reminded of that name by its
+`identityNotice` instead of being offered a fresh pick.
+
 Sessions are held in memory. After a server restart every client's
 session is gone; requests carrying a stale session ID are answered
 with HTTP 404 (`Session not found`), the MCP-standard signal for a
@@ -361,6 +370,7 @@ reverse proxy.
 | ------------------------- | -------------- | ------------------------------- |
 | Memory restore            | info           | counts, file path               |
 | Name pool restore         | info           | count, file path                |
+| Agent registry restore    | info           | sessions, identified, file path |
 | Agent identity claimed    | info           | picked name, next variant       |
 | Memory write or delete    | info           | name, importance, source        |
 | Session connect / close   | info           | name, session ID, IP, transport |

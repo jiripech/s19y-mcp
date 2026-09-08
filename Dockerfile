@@ -37,6 +37,7 @@ COPY compressor.mjs .
 COPY logger.mjs .
 COPY names.mjs .
 COPY name-pool.mjs .
+COPY agent-registry.mjs .
 COPY webauthn.mjs .
 COPY browser-sessions.mjs .
 COPY browser-routes.mjs .
