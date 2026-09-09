@@ -36,8 +36,7 @@ const LLM_MESSAGES = {
   starting: ['warn', 'Language model starting… Compression will work in a moment.'],
   'error-download': ['warn', 'Language model download failed. Compression will keep retrying.'],
   'error-start': ['warn', 'Language model failed to start. Compression will keep retrying.'],
-  'waiting-key': ['warn', 'Waiting for API_KEY configuration.'],
-  fatal: ['error', 'Startup failed. API_KEY is required.']
+  fatal: ['error', 'Startup failed.']
 }
 
 const llmBanner = () => {

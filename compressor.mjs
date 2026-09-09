@@ -42,15 +42,29 @@ export const startCompressor = (manager) => {
     logger.info('Memory compressor disabled (COMPRESSION_ENDPOINT set to none)')
     return
   }
-  logger.info(`Memory compressor enabled (endpoint ${COMPRESSION_ENDPOINT}, model ${COMPRESSION_MODEL}, interval ${COMPRESSION_INTERVAL_MS}ms)`)
+  logger.info(`Memory compressor configured (endpoint ${COMPRESSION_ENDPOINT}, model ${COMPRESSION_MODEL}, interval ${COMPRESSION_INTERVAL_MS}ms)`)
   let running = false
   let lastEndpointError = null
+  let announcedEnabled = false
+  const probeEndpoint = async () => {
+    const response = await fetch(`${COMPRESSION_ENDPOINT}/models`, {
+      signal: AbortSignal.timeout(5000)
+    })
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+  }
   const tick = async () => {
     if (running) {
       return
     }
     running = true
     try {
+      if (!announcedEnabled) {
+        await probeEndpoint()
+        announcedEnabled = true
+        logger.info(`Memory compressor enabled (endpoint ${COMPRESSION_ENDPOINT}, model ${COMPRESSION_MODEL})`)
+      }
       const graph = await manager.readGraph()
       const candidates = (graph.entities || [])
         .filter(entity =>
@@ -78,8 +92,8 @@ export const startCompressor = (manager) => {
       }
       lastEndpointError = null
     } catch (error) {
-      const isEndpointDown = /fetch failed|ECONNREFUSED|ETIMEDOUT|ENOTFOUND/i.test(String(error.message))
-      if (isEndpointDown) {
+      const isEndpointDown = /fetch failed|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|HTTP (4|5)/i.test(String(error.message))
+      if (isEndpointDown && !announcedEnabled) {
         if (lastEndpointError !== error.message) {
           logger.warn(`Compression endpoint not reachable yet (${error.message}). Retrying every tick.`)
           lastEndpointError = error.message

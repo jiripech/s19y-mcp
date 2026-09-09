@@ -40,7 +40,9 @@ docker run -d \
 ```
 
 - `-v s19y-data:/app/data` persists memories across container restarts.
-- Set `API_KEY` to the key your MCP clients will authenticate with.
+- Set `API_KEY` to the key your MCP clients will authenticate with. If omitted
+  (or left at the placeholder `change-to-your-api-key`), a random key is
+  generated and printed to the server log at startup.
 - See [Configuration](#configuration) for all environment variables.
 
 ### Build from source
@@ -311,30 +313,33 @@ browser - the pages warn about this. Options:
 
 ## Configuration
 
-| Variable                  | Description          | Default                   |
-| ------------------------- | -------------------- | ------------------------- |
-| `PORT`                    | Server port          | `3000`                    |
-| `API_KEY`                 | MCP client auth key  | `none`                    |
-| `DATA_DIR`                | Data directory       | `/app/data`               |
-| `MEMORY_FILE_PATH`        | Memory file location | `<DATA_DIR>/memory.jsonl` |
-| `LOG_LEVEL`               | Log level            | `info`                    |
-| `NODE_ENV`                | Environment          | `development`             |
-| `REGISTRATION_TOKEN`      | Registration token   | `none`                    |
-| `BROWSER_HOSTNAME`        | WebAuthn RP ID       | server hostname           |
-| `BROWSER_SCHEME`          | WebAuthn scheme      | `http`                    |
-| `ADMIN_USER`              | Password login user  | `none`                    |
-| `ADMIN_PASSWORD`          | Static admin password| `none` (rotating OTP)     |
-| `COMPRESSION_ENDPOINT`    | Compression endpoint | bundled (`127.0.0.1`)     |
-| `COMPRESSION_MODEL`       | Compression model    | `qwen2.5-3b-instruct`     |
-| `COMPRESSION_INTERVAL_MS` | Tick interval (ms)   | `60000`                   |
-| `LLM_ENABLED`             | Bundled model on/off | `true`                    |
-| `LLM_MODEL_URL`           | GGUF download URL    | Qwen2.5-3B (HF)           |
-| `LLM_MODEL_PATH`          | GGUF file location   | `<DATA_DIR>/model.gguf`   |
-| `LLM_PORT`                | llama-server port    | `8080`                    |
-| `LLM_CONTEXT`             | llama-server context | `4096`                    |
-| `LLM_THREADS`             | llama-server threads | `4`                       |
-| `SSL_CERT_FILE`           | Path to TLS cert PEM | `<DATA_DIR>/cert.pem`     |
-| `SSL_KEY_FILE`            | Path to TLS key PEM  | `<DATA_DIR>/key.pem`      |
+| Variable                  | Description           | Default                   |
+| ------------------------- | --------------------- | ------------------------- |
+| `PORT`                    | Server port           | `3000`                    |
+| `API_KEY`                 | MCP client auth key   | generated                 |
+| `DATA_DIR`                | Data directory        | `/app/data`               |
+| `MEMORY_FILE_PATH`        | Memory file location  | `<DATA_DIR>/memory.jsonl` |
+| `LOG_LEVEL`               | Log level             | `info`                    |
+| `NODE_ENV`                | Environment           | `development`             |
+| `REGISTRATION_TOKEN`      | Registration token    | `none`                    |
+| `BROWSER_HOSTNAME`        | WebAuthn RP ID        | server hostname           |
+| `BROWSER_SCHEME`          | WebAuthn scheme       | `http`                    |
+| `ADMIN_USER`              | Password login user   | `none`                    |
+| `ADMIN_PASSWORD`          | Static admin password | `none` (rotating OTP)     |
+| `COMPRESSION_ENDPOINT`    | Compression endpoint  | bundled (`127.0.0.1`)     |
+| `COMPRESSION_MODEL`       | Compression model     | `qwen2.5-3b-instruct`     |
+| `COMPRESSION_INTERVAL_MS` | Tick interval (ms)    | `60000`                   |
+| `LLM_ENABLED`             | Bundled model on/off  | `true`                    |
+| `LLM_MODEL_URL`           | GGUF download URL     | Qwen2.5-3B (HF)           |
+| `LLM_MODEL_PATH`          | GGUF file location    | `<DATA_DIR>/model.gguf`   |
+| `LLM_RETRIES`             | Download retries      | `3`                       |
+| `LLM_TIMEOUT`             | Health wait (s)       | `120`                     |
+| `LLM_PORT`                | llama-server port     | `8080`                    |
+| `LLM_CONTEXT`             | llama-server context  | `4096`                    |
+| `LLM_THREADS`             | llama-server threads  | `4`                       |
+| `LLM_WATCH_MS`            | Status refresh (ms)   | `30000`                   |
+| `SSL_CERT_FILE`           | Path to TLS cert PEM  | `<DATA_DIR>/cert.pem`     |
+| `SSL_KEY_FILE`            | Path to TLS key PEM   | `<DATA_DIR>/key.pem`      |
 
 `REGISTRATION_TOKEN` is required to register browser users; the first
 user can register without it. `BROWSER_HOSTNAME` is the WebAuthn RP ID
@@ -345,8 +350,10 @@ as a fallback when WebAuthn is unavailable; an 8-character one-time
 password is generated, persisted in `<DATA_DIR>/admin.password`, and
 rotated (with a new password printed to the log) after each
 successful login. Setting `ADMIN_PASSWORD` disables rotation and uses
-that fixed password instead. The memory compressor
-defaults to the bundled llama-server (see
+that fixed password instead. `API_KEY` authenticates MCP clients; when
+unset (or left at the placeholder `change-to-your-api-key`), a random
+key is generated and printed to the server log at startup. The memory
+compressor defaults to the bundled llama-server (see
 [Memory compressor](#memory-compressor)); `COMPRESSION_ENDPOINT=none`
 disables it, and any OpenAI-compatible URL can replace it.
 
@@ -357,6 +364,18 @@ HTTPS on the same port instead of plain HTTP. Override the paths with
 or issued by a trusted CA (e.g. mkcert for a LAN hostname) - clients
 must trust it. When serving TLS, point the MCP endpoint URL and any
 WebAuthn `BROWSER_SCHEME` at `https`.
+
+Environment variables that name file paths (`LLM_MODEL_PATH`,
+`MEMORY_FILE_PATH`, `SSL_CERT_FILE`, `SSL_KEY_FILE`) resolve relative
+paths against `DATA_DIR`: a value without a leading `/` such as
+`LLM_MODEL_PATH=Qwen/model.gguf` means `<DATA_DIR>/Qwen/model.gguf`.
+
+The bundled model is downloaded on first start and retried up to
+`LLM_RETRIES` times (backoff between attempts). The server waits up to
+`LLM_TIMEOUT` seconds for llama-server to report healthy before
+serving the memory endpoint without it; the `llm.status` banner is
+then refreshed every `LLM_WATCH_MS` milliseconds so it recovers to
+`ready` once llama-server responds.
 
 Every `store_memory` and `delete_memory` call writes the full memory
 graph to disk immediately, so data survives container restarts. The

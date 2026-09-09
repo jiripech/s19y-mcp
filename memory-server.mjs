@@ -9,11 +9,14 @@ import { rememberIdentity, findPreviousClaim } from './agent-registry.mjs'
 import { transposeInstruction } from './instructions.mjs'
 
 async function resolveMemoryPath() {
-  if (process.env.MEMORY_FILE_PATH) {
-    await mkdir(path.dirname(process.env.MEMORY_FILE_PATH), { recursive: true })
-    return process.env.MEMORY_FILE_PATH
-  }
   const dataDir = process.env.DATA_DIR || '/app/data'
+  if (process.env.MEMORY_FILE_PATH) {
+    const memoryPath = process.env.MEMORY_FILE_PATH.startsWith('/')
+      ? process.env.MEMORY_FILE_PATH
+      : path.join(dataDir, process.env.MEMORY_FILE_PATH)
+    await mkdir(path.dirname(memoryPath), { recursive: true })
+    return memoryPath
+  }
   try {
     await mkdir(dataDir, { recursive: true })
     return path.join(dataDir, 'memory.jsonl')

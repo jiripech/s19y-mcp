@@ -7,6 +7,7 @@ import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js'
 import { createManager, createServer } from './memory-server.mjs'
 import { migrateGraph } from './migrate.mjs'
 import { startCompressor } from './compressor.mjs'
+import { startLlmWatcher } from './llm-watch.mjs'
 import { initInfoStore } from './info-store.mjs'
 import { createInfoRouter } from './info-routes.mjs'
 import { initInstructions } from './instructions.mjs'
@@ -21,12 +22,19 @@ import { fileURLToPath } from 'node:url'
 
 const app = express()
 const PORT = process.env.PORT || 3000
-const API_KEY = process.env.API_KEY || 'change-to-your-api-key'
+const SERVICE_API_KEY = process.env.API_KEY && process.env.API_KEY !== 'change-to-your-api-key'
+  ? process.env.API_KEY
+  : null
+const API_KEY = SERVICE_API_KEY || randomUUID()
+if (!SERVICE_API_KEY) {
+  logger.info(`Generated API_KEY: ${API_KEY} (set API_KEY for a stable key)`)
+}
 const ADMIN_USER = process.env.ADMIN_USER || null
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null
 const DATA_DIR = process.env.DATA_DIR || '/app/data'
-const SSL_CERT_FILE = process.env.SSL_CERT_FILE || join(DATA_DIR, 'cert.pem')
-const SSL_KEY_FILE = process.env.SSL_KEY_FILE || join(DATA_DIR, 'key.pem')
+const toDataPath = (p) => (p && !p.startsWith('/')) ? join(DATA_DIR, p) : p
+const SSL_CERT_FILE = toDataPath(process.env.SSL_CERT_FILE || join(DATA_DIR, 'cert.pem'))
+const SSL_KEY_FILE = toDataPath(process.env.SSL_KEY_FILE || join(DATA_DIR, 'key.pem'))
 
 app.set('trust proxy', true)
 
@@ -37,6 +45,7 @@ const usedNames = new Set()
 const manager = await createManager()
 await migrateGraph(manager)
 startCompressor(manager)
+startLlmWatcher()
 await initInfoStore(join(dirname(fileURLToPath(import.meta.url)), 'info'))
 await initInstructions()
 await initAgentRegistry()
@@ -229,10 +238,6 @@ async function resolveStoredPassword() {
 }
 
 const storedAdmin = ADMIN_USER ? await resolveStoredPassword() : null
-
-if (ADMIN_USER) {
-  logger.info(`Browser password login enabled for user "${ADMIN_USER}".`)
-}
 
 app.use('/info', createInfoRouter(API_KEY))
 

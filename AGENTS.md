@@ -46,7 +46,7 @@ API_KEY=your-key docker compose up
 ```text
 s19y-mcp/
 ├── server.mjs          # Main MCP server entry point
-├── entrypoint.sh       # Container startup: validates API_KEY
+├── entrypoint.sh       # Container startup: generates API_KEY if missing
 ├── package.json        # Node.js dependencies and scripts
 ├── Dockerfile          # Container build instructions
 ├── docker-compose.yml  # Multi-container orchestration
@@ -120,27 +120,40 @@ tags mutable for `latest` to track releases.
 
 ## Environment Variables
 
-| Variable                  | Required | Description                          |
-| ------------------------- | -------- | ------------------------------------ |
-| `PORT`                    | No       | Server port (default: 3000)          |
-| `API_KEY`                 | Yes      | Authentication key for MCP clients   |
-| `DATA_DIR`                | No       | Data storage directory (/app/data)   |
-| `REGISTRATION_TOKEN`      | No       | Registration token for browser users |
-| `BROWSER_HOSTNAME`        | No       | WebAuthn RP ID (default: hostname)   |
-| `BROWSER_SCHEME`          | No       | WebAuthn scheme (http/https)         |
-| `ADMIN_USER`              | No       | Password login user for the browser  |
-| `ADMIN_PASSWORD`          | No       | Static admin password (overrides OTP)|
-| `COMPRESSION_ENDPOINT`    | No       | Compression endpoint (bundled)       |
-| `COMPRESSION_MODEL`       | No       | Compression model name               |
-| `COMPRESSION_INTERVAL_MS` | No       | Tick interval (default 60000)        |
-| `LLM_ENABLED`             | No       | Bundled llama-server on/off (true)   |
-| `LLM_MODEL_URL`           | No       | GGUF download URL (Qwen2.5-3B)       |
-| `LLM_MODEL_PATH`          | No       | GGUF path (/app/data/model.gguf)     |
-| `LLM_PORT`                | No       | llama-server port (default: 8080)    |
-| `LLM_CONTEXT`             | No       | llama-server context (default: 4096) |
-| `LLM_THREADS`             | No       | llama-server threads (default: 4)    |
-| `SSL_CERT_FILE`           | No       | TLS cert PEM path (default: cert.pem)|
-| `SSL_KEY_FILE`            | No       | TLS key PEM path (default: key.pem)  |
+| Variable                  | Description                | Default             |
+| ------------------------- | -------------------------- | ------------------- |
+| `API_KEY`                 | MCP client auth key        | generated           |
+| `PORT`                    | Server port                | 3000                |
+| `DATA_DIR`                | Data storage directory     | /app/data           |
+| `REGISTRATION_TOKEN`      | Browser registration token | none                |
+| `BROWSER_HOSTNAME`        | WebAuthn RP ID             | hostname            |
+| `BROWSER_SCHEME`          | WebAuthn scheme            | http                |
+| `ADMIN_USER`              | Password login user        | none                |
+| `ADMIN_PASSWORD`          | Static admin password      | none (OTP)          |
+| `COMPRESSION_ENDPOINT`    | Compression endpoint       | bundled             |
+| `COMPRESSION_MODEL`       | Compression model          | qwen2.5-3b-instruct |
+| `COMPRESSION_INTERVAL_MS` | Tick interval (ms)         | 60000               |
+| `LLM_ENABLED`             | Bundled llama-server       | true                |
+| `LLM_MODEL_URL`           | GGUF download URL          | Qwen2.5-3B (HF)     |
+| `LLM_MODEL_PATH`          | GGUF file location         | model.gguf          |
+| `LLM_RETRIES`             | Model download retries     | 3                   |
+| `LLM_TIMEOUT`             | Health wait (s)            | 120                 |
+| `LLM_PORT`                | llama-server port          | 8080                |
+| `LLM_CONTEXT`             | llama-server context       | 4096                |
+| `LLM_THREADS`             | llama-server threads       | 4                   |
+| `LLM_WATCH_MS`            | llm.status refresh (ms)    | 30000               |
+| `SSL_CERT_FILE`           | TLS cert PEM path          | cert.pem            |
+| `SSL_KEY_FILE`            | TLS key PEM path           | key.pem             |
+
+`API_KEY` authenticates MCP clients; when unset (or left at the
+placeholder `change-to-your-api-key`), a random key is generated and
+printed to the log at startup. Relative file-path environment
+variables (`LLM_MODEL_PATH`, `MEMORY_FILE_PATH`, `SSL_CERT_FILE`,
+`SSL_KEY_FILE`) resolve against `DATA_DIR` when they do not begin
+with `/`. The bundled LLM download is retried `LLM_RETRIES` times;
+the server waits up to `LLM_TIMEOUT` seconds for llama-server and
+refreshes `llm.status` every `LLM_WATCH_MS` ms so the banner recovers
+to `ready` once the endpoint responds.
 
 ## Markdown Rules
 
