@@ -5,9 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog][kac], and this project adheres to
 [Semantic Versioning][semver].
 
-## [Unreleased]
+## [0.15.0] - 2026-09-09
 
-### Added (Unreleased)
+### Added (0.15.0)
 
 - TLS on the server port: when `cert.pem` and `key.pem` (unencrypted
   PEM) are present in the data directory, the server serves HTTPS
@@ -17,6 +17,39 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
   commits: `lint` (markdownlint), `lint:sh` (shellcheck), `lint:ci`
   (actionlint), `syntax` (node --check on all top-level modules), and
   `check` (all four in sequence)
+- `llm.status` refresh watcher: while llama-server is still starting
+  or after a failed start, the status file is re-checked against the
+  health endpoint and flipped back to `ready` once it responds, so
+  the browser banner recovers without a container restart
+- Model download cleanup and retry: the model directory is created
+  before downloading, failed downloads are retried
+  `LLM_RETRIES` times with backoff, and the failure message states
+  clearly that nothing retries later and a restart with a reachable
+  URL is needed
+
+### Changed (0.15.0)
+
+- `API_KEY` is now optional: when unset (or left at the placeholder
+  `change-to-your-api-key`), a random key is generated and printed to
+  the startup log; the entrypoint no longer blocks waiting for a key
+- Renamed LLM environment variables to keep them under 15
+  characters: `LLM_MODEL_DOWNLOAD_RETRIES` → `LLM_RETRIES`,
+  `LLM_HEALTH_TIMEOUT` → `LLM_TIMEOUT`, and
+  `LLM_WATCH_INTERVAL_MS` → `LLM_WATCH_MS`
+- Relative file-path environment variables (`LLM_MODEL_PATH`,
+  `MEMORY_FILE_PATH`, `SSL_CERT_FILE`, `SSL_KEY_FILE`) now resolve
+  against `DATA_DIR` when they do not begin with `/`
+- The memory compressor announces itself as enabled only once its
+  endpoint responds; startup logging was clarified to "configured"
+  until then
+
+### Fixed (0.15.0)
+
+- Transposed `AGENTS.md` sections were invalid markdown: headings
+  truncated mid-word, 80+-column unwrapped content, and an italic
+  `_Author ..._` footer. Transposed sections now use a word-boundary
+  heading, body wrapped at 80 columns, and a lint-clean
+  `---`/`Author metadata` footer
 
 ## [0.14.1] - 2026-09-09
 
@@ -390,6 +423,8 @@ Initial release of the S19y MCP Server with the following features:
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html
+[0.15.0]: https://github.com/jiripech/s19y-mcp/compare/v0.14.1...v0.15.0
+[0.14.1]: https://github.com/jiripech/s19y-mcp/compare/v0.13.0...v0.14.1
 [0.13.0]: https://github.com/jiripech/s19y-mcp/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/jiripech/s19y-mcp/compare/v0.11.2...v0.12.0
 [0.11.2]: https://github.com/jiripech/s19y-mcp/compare/v0.11.1...v0.11.2
