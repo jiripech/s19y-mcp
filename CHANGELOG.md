@@ -5,9 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog][kac], and this project adheres to
 [Semantic Versioning][semver].
 
-## [Unreleased]
+## [0.14.1] - 2026-09-09
 
-### Added (Unreleased)
+### Added (0.14.1)
 
 - Agent registry: every connection is persisted in `<DATA_DIR>/
   agents.json` (session UUID, codename, transport, client IP, first
@@ -18,7 +18,7 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
   of that name in its `identityNotice` instead of being offered a
   fresh pick
 
-### Fixed (Unreleased)
+### Fixed (0.14.1)
 
 - Browser showing `ERR_ADDRESS_UNREACHABLE` while the bundled LLM
   boots: the entrypoint previously started the LLM (model download +
