@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog][kac], and this project adheres to
 [Semantic Versioning][semver].
 
+## [0.15.1] - 2026-09-09
+
+### Changed (0.15.1)
+
+- Corrupt or mismatched TLS certificate/key files no longer crash the
+  server: the PEM files are validated at load time and `createHttpsServer`
+  is wrapped so the server falls back to plain HTTP with a warning instead
+  of entering a container restart loop
+- The entrypoint reports why llama-server is not healthy when it exits
+  early: instead of waiting blindly and printing a generic timeout, it
+  detects a dead process, reports its exit code, and dumps the tail of
+  `llama-server.log` (or notes the log is empty) so failures visible in
+  the `docker logs` banner
+- The token browser uses the `priority` attribute directly (0-100, default
+  50) instead of the legacy 1-10 `importance` scale that was silently
+  multiplied by 10; the editor now accepts the full 0-100 range and
+  legacy `importance` observations still display correctly
+
+### Fixed (0.15.1)
+
+- Markdown and textareas in the token browser's `#/info` view now use a
+  monospace font so aligned columns render correctly
+
 ## [0.15.0] - 2026-09-09
 
 ### Added (0.15.0)
@@ -423,6 +446,7 @@ Initial release of the S19y MCP Server with the following features:
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html
+[0.15.1]: https://github.com/jiripech/s19y-mcp/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/jiripech/s19y-mcp/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/jiripech/s19y-mcp/compare/v0.13.0...v0.14.1
 [0.13.0]: https://github.com/jiripech/s19y-mcp/compare/v0.12.0...v0.13.0

@@ -44,3 +44,14 @@ it('loads a valid PEM pair from the repo examples', async () => {
   assert.ok(options.cert.toString().includes('BEGIN CERTIFICATE'))
   assert.ok(options.key.toString().includes('BEGIN PRIVATE KEY'))
 })
+
+it('throws a descriptive error when the PEM files are corrupt', async () => {
+  const corruptCert = join(TMP, 'corrupt-cert.pem')
+  const corruptKey = join(TMP, 'corrupt-key.pem')
+  await writeFile(corruptCert, 'this is not a valid certificate')
+  await writeFile(corruptKey, 'this is not a valid key')
+  await assert.rejects(
+    () => mod.loadTlsOptions(corruptCert, corruptKey),
+    /could not be parsed/
+  )
+})

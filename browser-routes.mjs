@@ -51,19 +51,21 @@ function parseMemory(entity) {
     return {
       name: entity.name,
       content: `Available agent names (${observations.length - 1})`,
-      importance: 10,
+      priority: 100,
       tags: ['system'],
       source: 'System',
       system: true
     }
   }
   let content = ''
-  let importance = 5
+  let priority = 50
   let tags = []
   let source = null
   for (const obs of observations) {
-    if (obs.startsWith('importance: ')) {
-      importance = parseInt(obs.slice(12), 10) || 5
+    if (obs.startsWith('priority: ')) {
+      priority = parseInt(obs.slice(10), 10) || 50
+    } else if (obs.startsWith('importance: ')) {
+      priority = Math.min(parseInt(obs.slice(12), 10) * 10, 100) || 50
     } else if (obs.startsWith('tags: ')) {
       tags = obs.slice(6).split(',').map(t => t.trim()).filter(Boolean)
     } else if (obs.startsWith('source: ')) {
@@ -72,7 +74,7 @@ function parseMemory(entity) {
       content = obs
     }
   }
-  return { name: entity.name, content, importance, tags, source: source || 'Unclaimed' }
+  return { name: entity.name, content, priority, tags, source: source || 'Unclaimed' }
 }
 
 export function generateAdminPassword() {
@@ -348,9 +350,9 @@ export function createBrowserRouter(manager, options = {}) {
   }))
 
   router.post('/api/memories', requireSuperuser, wrap(async (req, res) => {
-    const { content, tags, source, importance = 5 } = req.body
+    const { content, tags, source, priority = 50 } = req.body
     const name = `memory_${Date.now()}`
-    const observations = [content, `importance: ${importance}`]
+    const observations = [content, `priority: ${priority}`]
     if (tags && tags.length > 0) {
       observations.push(`tags: ${tags.join(', ')}`)
     }
@@ -358,7 +360,7 @@ export function createBrowserRouter(manager, options = {}) {
       observations.push(`source: ${source}`)
     }
     await manager.createEntities([{ name, entityType: 'memory', observations }])
-    logger.info(`Stored memory ${name} (importance ${importance}${source ? `, source ${source}` : ''})`)
+    logger.info(`Stored memory ${name} (priority ${priority}${source ? `, source ${source}` : ''})`)
     res.json({ success: true, name })
   }))
 
@@ -372,12 +374,12 @@ export function createBrowserRouter(manager, options = {}) {
       return res.status(404).json({ error: 'Memory not found' })
     }
     const current = parseMemory(graph.entities[0])
-    const { content, tags, source, importance } = req.body
+    const { content, tags, source, priority } = req.body
     const mergedContent = content ?? current.content
-    const mergedImportance = importance ?? current.importance
+    const mergedPriority = priority ?? current.priority
     const mergedTags = tags ?? current.tags
     const mergedSource = source ?? current.source
-    const observations = [mergedContent, `importance: ${mergedImportance}`]
+    const observations = [mergedContent, `priority: ${mergedPriority}`]
     if (mergedTags && mergedTags.length > 0) {
       observations.push(`tags: ${mergedTags.join(', ')}`)
     }
@@ -386,7 +388,7 @@ export function createBrowserRouter(manager, options = {}) {
     }
     await manager.deleteEntities([name])
     await manager.createEntities([{ name, entityType: 'memory', observations }])
-    logger.info(`Updated memory ${name} (importance ${mergedImportance}${mergedSource ? `, source ${mergedSource}` : ''})`)
+    logger.info(`Updated memory ${name} (priority ${mergedPriority}${mergedSource ? `, source ${mergedSource}` : ''})`)
     res.json({ success: true })
   }))
 

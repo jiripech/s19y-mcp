@@ -256,10 +256,17 @@ try {
 }
 
 if (tlsOptions) {
-  const server = createHttpsServer(tlsOptions, app)
-  server.listen(PORT, () => {
-    logger.info(`MCP Memory Server running on port ${PORT} with TLS and authentication enabled.`)
-  })
+  try {
+    const server = createHttpsServer(tlsOptions, app)
+    server.listen(PORT, () => {
+      logger.info(`MCP Memory Server running on port ${PORT} with TLS and authentication enabled.`)
+    })
+  } catch (err) {
+    logger.warn(`TLS setup failed: ${err.message}. Falling back to plain HTTP.`)
+    app.listen(PORT, () => {
+      logger.info(`MCP Memory Server running on port ${PORT} with authentication enabled.`)
+    })
+  }
 } else {
   app.listen(PORT, () => {
     logger.info(`MCP Memory Server running on port ${PORT} with authentication enabled.`)

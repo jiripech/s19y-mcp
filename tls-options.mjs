@@ -1,4 +1,5 @@
 import { access, readFile } from 'node:fs/promises'
+import { X509Certificate, createPrivateKey } from 'node:crypto'
 
 const exists = async (path) => {
   try {
@@ -28,5 +29,11 @@ export async function loadTlsOptions(certPath, keyPath) {
     readFile(certPath),
     readFile(keyPath)
   ])
+  try {
+    new X509Certificate(certPem)
+    createPrivateKey(keyPem)
+  } catch (err) {
+    throw new Error(`TLS enabled requires valid PEM files, but ${certPath} or ${keyPath} could not be parsed: ${err.message}`)
+  }
   return { cert: certPem, key: keyPem }
 }

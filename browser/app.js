@@ -295,8 +295,8 @@ const modalField = (label, control) => el('div', {}, [
 const openMemoryModal = (memory = null, onSaved = null) => {
   const contentInput = el('textarea', { class: 'input', rows: 4, placeholder: 'Memory content', required: true })
   contentInput.value = memory ? memory.content : ''
-  const importanceInput = el('input', { class: 'input', type: 'number', min: 1, max: 10, step: 1, required: true })
-  importanceInput.value = memory ? memory.importance : 5
+  const priorityInput = el('input', { class: 'input', type: 'number', min: 0, max: 100, step: 1, required: true })
+  priorityInput.value = memory ? memory.priority ?? 50 : 50
   const tagsInput = el('input', { class: 'input', type: 'text', placeholder: 'Comma-separated tags' })
   tagsInput.value = memory && memory.tags ? memory.tags.join(', ') : ''
   const sourceInput = el('input', { class: 'input', type: 'text', placeholder: 'e.g. chat, notes' })
@@ -308,7 +308,7 @@ const openMemoryModal = (memory = null, onSaved = null) => {
   const form = el('form', { class: 'card modal' }, [
     el('h2', { class: 'modal-title' }, memory ? 'Edit memory' : 'New memory'),
     modalField('Content', contentInput),
-    modalField('Importance (1-10)', importanceInput),
+    modalField('Priority (0-100)', priorityInput),
     modalField('Tags', tagsInput),
     modalField('Source', sourceInput),
     error,
@@ -322,10 +322,10 @@ const openMemoryModal = (memory = null, onSaved = null) => {
     event.preventDefault()
     error.hidden = true
     submit.disabled = true
-    const importance = Number.parseInt(importanceInput.value, 10)
+    const priority = Number.parseInt(priorityInput.value, 10)
     const body = {
       content: contentInput.value.trim(),
-      importance: Number.isNaN(importance) ? 5 : Math.min(10, Math.max(1, importance)),
+      priority: Number.isNaN(priority) ? 50 : Math.min(100, Math.max(0, priority)),
       tags: tagsInput.value.split(',').map(tag => tag.trim()).filter(Boolean),
       source: sourceInput.value.trim()
     }
@@ -605,7 +605,7 @@ const renderMemories = () => {
   }
 
   const memoryCard = (memory) => {
-    const priority = memory.priority ?? memory.importance * 10
+    const priority = memory.priority ?? 50
     const chips = [
       ...(memory.tags || []).map(tag => el('span', { class: 'chip' }, tag)),
       memory.u && memory.u !== 'Unclaimed' ? el('span', { class: 'chip' }, memory.u) : null,

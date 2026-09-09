@@ -72,6 +72,7 @@ start_llm() {
   LD_LIBRARY_PATH=/usr/local/lib/llama \
     /usr/local/lib/llama/llama-server -m "$MODEL_PATH" -c "$LLM_CONTEXT" -t "$LLM_THREADS" \
     --host 127.0.0.1 --port "$LLM_PORT" >"$DATA_DIR/llama-server.log" 2>&1 &
+  LLAMA_PID=$!
 
   i=0
   while [ "$i" -lt "$LLM_TIMEOUT" ]; do
@@ -80,10 +81,22 @@ start_llm() {
       llm_status "ready"
       return 0
     fi
+    if ! kill -0 "$LLAMA_PID" 2>/dev/null; then
+      wait "$LLAMA_PID" 2>/dev/null
+      LLAMA_EXIT=$?
+      echo "[ERROR] llama-server exited before becoming healthy (exit code $LLAMA_EXIT). Dumping its log:"
+      if [ -s "$DATA_DIR/llama-server.log" ]; then
+        tail -50 "$DATA_DIR/llama-server.log"
+      else
+        echo "[ERROR] $DATA_DIR/llama-server.log is empty - the process produced no output before exiting."
+      fi
+      llm_status "error-start"
+      return 0
+    fi
     i=$((i + 1))
     sleep 1
   done
-  echo "[WARN] llama-server did not become healthy within ${LLM_TIMEOUT}s. The memory compressor will retry the endpoint every tick; the status is refreshed once it responds."
+  echo "[WARN] llama-server did not become healthy within ${LLM_TIMEOUT}s but is still running. The memory compressor will retry the endpoint every tick; the status is refreshed once it responds."
   llm_status "error-start"
   return 0
 }
