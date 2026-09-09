@@ -37,7 +37,23 @@ describe('Instruction transpose', () => {
     })
     const content = readFileSync(join(dataDir, 'AGENTS.md'), 'utf8')
     assert.match(content, /Before-Push Checklist content/)
-    assert.match(content, /u: jiri\.pech, p: s19y-mcp/)
+    assert.match(content, /Author metadata: u jiri\.pech, p s19y-mcp/)
+  })
+
+  it('wraps long content at 80 columns and ends the section cleanly', async () => {
+    const longContent = 'Sentence one. '.repeat(30) +
+      'Sentence two with a very long unbroken token: ' +
+      'abcdefghijklmnopqrstuvwxyz'.repeat(5) + '.'
+    await mod.transposeInstruction({
+      name: 'memory_wrapped',
+      observations: [longContent, 'priority: 90', 'u: jiri.pech']
+    })
+    const content = readFileSync(join(dataDir, 'AGENTS.md'), 'utf8')
+    const section = content.slice(content.indexOf('<!-- memory: memory_wrapped -->'))
+    for (const line of section.split('\n')) {
+      assert.ok(line.length <= 80, `line exceeds 80 chars: ${line.length}`)
+    }
+    assert.match(section, /\n---\nAuthor metadata: u jiri\.pech, p Unclaimed, stored /)
   })
 
   it('does not transpose a memory below priority 90', async () => {
