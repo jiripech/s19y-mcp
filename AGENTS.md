@@ -139,6 +139,8 @@ tags mutable for `latest` to track releases.
 | `LLM_PORT`                | No       | llama-server port (default: 8080)    |
 | `LLM_CONTEXT`             | No       | llama-server context (default: 4096) |
 | `LLM_THREADS`             | No       | llama-server threads (default: 4)    |
+| `SSL_CERT_FILE`           | No       | TLS cert PEM path (default: cert.pem)|
+| `SSL_KEY_FILE`            | No       | TLS key PEM path (default: key.pem)  |
 
 ## Markdown Rules
 

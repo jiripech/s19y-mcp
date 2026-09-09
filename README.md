@@ -333,6 +333,8 @@ browser - the pages warn about this. Options:
 | `LLM_PORT`                | llama-server port    | `8080`                    |
 | `LLM_CONTEXT`             | llama-server context | `4096`                    |
 | `LLM_THREADS`             | llama-server threads | `4`                       |
+| `SSL_CERT_FILE`           | Path to TLS cert PEM | `<DATA_DIR>/cert.pem`     |
+| `SSL_KEY_FILE`            | Path to TLS key PEM  | `<DATA_DIR>/key.pem`      |
 
 `REGISTRATION_TOKEN` is required to register browser users; the first
 user can register without it. `BROWSER_HOSTNAME` is the WebAuthn RP ID
@@ -347,6 +349,14 @@ that fixed password instead. The memory compressor
 defaults to the bundled llama-server (see
 [Memory compressor](#memory-compressor)); `COMPRESSION_ENDPOINT=none`
 disables it, and any OpenAI-compatible URL can replace it.
+
+When both a certificate and its key (unencrypted PEM) are present at
+`<DATA_DIR>/cert.pem` and `<DATA_DIR>/key.pem`, the server serves
+HTTPS on the same port instead of plain HTTP. Override the paths with
+`SSL_CERT_FILE` and `SSL_KEY_FILE`. The certificate can be self-signed
+or issued by a trusted CA (e.g. mkcert for a LAN hostname) - clients
+must trust it. When serving TLS, point the MCP endpoint URL and any
+WebAuthn `BROWSER_SCHEME` at `https`.
 
 Every `store_memory` and `delete_memory` call writes the full memory
 graph to disk immediately, so data survives container restarts. The

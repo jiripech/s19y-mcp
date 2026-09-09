@@ -7,7 +7,13 @@
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning server.mjs",
     "dev": "node --watch --disable-warning=ExperimentalWarning server.mjs",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "test:file": "node --test",
+    "lint": "markdownlint *.md",
+    "lint:sh": "shellcheck -x scripts/*.sh",
+    "lint:ci": "actionlint .github/workflows/docker-build-push.yml",
+    "syntax": "for f in *.mjs; do node --check \"$f\" || exit 1; done",
+    "check": "npm run syntax && npm run lint && npm run lint:sh && npm run lint:ci"
   },
   "keywords": [
     "mcp",
@@ -17,6 +23,9 @@
   ],
   "author": "RevoFab s.r.o.",
   "license": "MIT",
+  "devDependencies": {
+    "markdownlint-cli": "^0.43.0"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@modelcontextprotocol/server-memory": "^2026.7.4",

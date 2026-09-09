@@ -35,6 +35,7 @@ COPY memory-server.mjs .
 COPY migrate.mjs .
 COPY compressor.mjs .
 COPY logger.mjs .
+COPY tls-options.mjs .
 COPY names.mjs .
 COPY name-pool.mjs .
 COPY agent-registry.mjs .

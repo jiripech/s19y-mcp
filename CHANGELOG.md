@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog][kac], and this project adheres to
 [Semantic Versioning][semver].
 
+## [Unreleased]
+
+### Added (Unreleased)
+
+- TLS on the server port: when `cert.pem` and `key.pem` (unencrypted
+  PEM) are present in the data directory, the server serves HTTPS
+  instead of plain HTTP; paths can be overridden with `SSL_CERT_FILE`
+  and `SSL_KEY_FILE`
+- Convenience `npm run` scripts for the local checks used before
+  commits: `lint` (markdownlint), `lint:sh` (shellcheck), `lint:ci`
+  (actionlint), `syntax` (node --check on all top-level modules), and
+  `check` (all four in sequence)
+
 ## [0.14.1] - 2026-09-09
 
 ### Added (0.14.1)

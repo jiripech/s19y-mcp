@@ -1,4 +1,5 @@
 import express from 'express'
+import { createServer as createHttpsServer } from 'node:https'
 import { randomUUID } from 'node:crypto'
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
@@ -12,6 +13,7 @@ import { initInstructions } from './instructions.mjs'
 import { createBrowserRouter, generateAdminPassword } from './browser-routes.mjs'
 import { logger } from './logger.mjs'
 import { initAgentRegistry, rememberConnection } from './agent-registry.mjs'
+import { loadTlsOptions } from './tls-options.mjs'
 import { names } from './names.mjs'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
@@ -23,6 +25,8 @@ const API_KEY = process.env.API_KEY || 'change-to-your-api-key'
 const ADMIN_USER = process.env.ADMIN_USER || null
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null
 const DATA_DIR = process.env.DATA_DIR || '/app/data'
+const SSL_CERT_FILE = process.env.SSL_CERT_FILE || join(DATA_DIR, 'cert.pem')
+const SSL_KEY_FILE = process.env.SSL_KEY_FILE || join(DATA_DIR, 'key.pem')
 
 app.set('trust proxy', true)
 
@@ -239,6 +243,20 @@ app.use('/browser.app', createBrowserRouter(manager, {
   dataDir: DATA_DIR
 }))
 
-app.listen(PORT, () => {
-  logger.info(`MCP Memory Server running on port ${PORT} with authentication enabled.`)
-})
+let tlsOptions = null
+try {
+  tlsOptions = await loadTlsOptions(SSL_CERT_FILE, SSL_KEY_FILE)
+} catch (err) {
+  logger.warn(`TLS not enabled: ${err.message}`)
+}
+
+if (tlsOptions) {
+  const server = createHttpsServer(tlsOptions, app)
+  server.listen(PORT, () => {
+    logger.info(`MCP Memory Server running on port ${PORT} with TLS and authentication enabled.`)
+  })
+} else {
+  app.listen(PORT, () => {
+    logger.info(`MCP Memory Server running on port ${PORT} with authentication enabled.`)
+  })
+}
