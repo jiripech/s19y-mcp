@@ -5,3 +5,5 @@ tmp/
 data/*
 !data/names.txt
 *.code-workspace
+.DS_Store
+Thumbs.db
