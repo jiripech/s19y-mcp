@@ -1,7 +1,7 @@
 # Agent identity
 
-Every session gets a random codename (for example `Agent Fox`) shown
-in server logs. Two ways to have a stable identity:
+Every session gets a random codename (for example `Agent Fox`) shown in server logs.
+Two ways to have a stable identity:
 
 ## Preferred: X-Agent-Name header
 
