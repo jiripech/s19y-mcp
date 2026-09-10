@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog][kac], and this project adheres to
 [Semantic Versioning][semver].
 
+## [0.16.0] - 2026-09-10
+
+### Added (0.16.0)
+
+- TLS is now terminated by a bundled nginx proxy instead of Node: nginx
+  listens on the public `PORT` (default 3000) and proxies to the Node
+  app on `APP_HOST:APP_PORT` (default `127.0.0.1:3001`), so the Node
+  process no longer binds a public port directly
+- When both `SSL_CERT_FILE` and `SSL_KEY_FILE` (unencrypted PEM,
+  default `<DATA_DIR>/cert.pem` and `<DATA_DIR>/key.pem`) are present,
+  nginx serves HTTPS on `PORT` and falls back to plain HTTP with a
+  warning if the PEM pair is invalid; nginx runs with streaming proxy
+  settings (`proxy_buffering off`, long timeouts) so MCP SSE and
+  Streamable HTTP connections are not buffered
+
+### Changed (0.16.0)
+
+- llama.cpp is pinned to the stable `v0.4.0` release instead of a
+  moving `master` checkout, so builds are reproducible; llama-server
+  logs are line-buffered (`stdbuf`), so a crash point is visible in
+  `llama-server.log` instead of a zero-byte file
+- `server.mjs` no longer reads `ssl`-related PEM files itself; the
+  `tls-options.mjs` module and its test were removed
+- `AGENTS.md` and the README document the new port layout
+  (`PORT` / `APP_PORT` / `APP_HOST`) and the nginx TLS topology
+
 ## [0.15.1] - 2026-09-09
 
 ### Changed (0.15.1)
@@ -446,6 +472,7 @@ Initial release of the S19y MCP Server with the following features:
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html
+[0.16.0]: https://github.com/jiripech/s19y-mcp/compare/v0.15.1...v0.16.0
 [0.15.1]: https://github.com/jiripech/s19y-mcp/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/jiripech/s19y-mcp/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/jiripech/s19y-mcp/compare/v0.13.0...v0.14.1

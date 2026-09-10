@@ -296,9 +296,10 @@ WebAuthn on HTTPS origins or on `localhost`. Plain HTTP on a LAN IP
 (for example `http://10.0.0.222:12300/browser.app/`) is blocked by the
 browser - the pages warn about this. Options:
 
-- Terminate TLS in your reverse proxy (haproxy, caddy, nginx) and
-  access the browser through the HTTPS hostname; set
-  `BROWSER_SCHEME=https` and `BROWSER_HOSTNAME` to that hostname so
+- Use the bundled nginx TLS: drop `cert.pem` and `key.pem` into
+  `<DATA_DIR>` (or override `SSL_CERT_FILE`/`SSL_KEY_FILE`), set
+  `BROWSER_SCHEME=https` and `BROWSER_HOSTNAME` to the public
+  hostname, and access the browser through the HTTPS hostname so
   WebAuthn origin verification matches
 - For quick local testing, forward the port to your workstation
   (`ssh -L 12300:localhost:12300 <host>`) and open
@@ -315,7 +316,9 @@ browser - the pages warn about this. Options:
 
 | Variable                  | Description           | Default                   |
 | ------------------------- | --------------------- | ------------------------- |
-| `PORT`                    | Server port           | `3000`                    |
+| `PORT`                    | Public port (nginx)   | `3000`                    |
+| `APP_PORT`                | Internal app port     | `3001`                    |
+| `APP_HOST`                | Internal app host     | `127.0.0.1`               |
 | `API_KEY`                 | MCP client auth key   | generated                 |
 | `DATA_DIR`                | Data directory        | `/app/data`               |
 | `MEMORY_FILE_PATH`        | Memory file location  | `<DATA_DIR>/memory.jsonl` |
@@ -357,13 +360,17 @@ compressor defaults to the bundled llama-server (see
 [Memory compressor](#memory-compressor)); `COMPRESSION_ENDPOINT=none`
 disables it, and any OpenAI-compatible URL can replace it.
 
-When both a certificate and its key (unencrypted PEM) are present at
-`<DATA_DIR>/cert.pem` and `<DATA_DIR>/key.pem`, the server serves
-HTTPS on the same port instead of plain HTTP. Override the paths with
-`SSL_CERT_FILE` and `SSL_KEY_FILE`. The certificate can be self-signed
-or issued by a trusted CA (e.g. mkcert for a LAN hostname) - clients
-must trust it. When serving TLS, point the MCP endpoint URL and any
-WebAuthn `BROWSER_SCHEME` at `https`.
+TLS is terminated by the bundled nginx proxy, not by Node. nginx
+listens on the public `PORT` and proxies to the Node app on
+`APP_HOST:APP_PORT` (loopback). When both a certificate and its key
+(unencrypted PEM) are present at `<DATA_DIR>/cert.pem` and
+`<DATA_DIR>/key.pem`, nginx serves HTTPS on `PORT`; otherwise it
+serves plain HTTP. Override the paths with `SSL_CERT_FILE` and
+`SSL_KEY_FILE`. The certificate can be self-signed or issued by a
+trusted CA (e.g. mkcert for a LAN hostname) - clients must trust it.
+When serving TLS, point the MCP endpoint URL and any WebAuthn
+`BROWSER_SCHEME` at `https`, and set `BROWSER_HOSTNAME` to the public
+hostname so WebAuthn origin verification matches.
 
 Environment variables that name file paths (`LLM_MODEL_PATH`,
 `MEMORY_FILE_PATH`, `SSL_CERT_FILE`, `SSL_KEY_FILE`) resolve relative

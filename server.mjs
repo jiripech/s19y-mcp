@@ -1,5 +1,4 @@
 import express from 'express'
-import { createServer as createHttpsServer } from 'node:https'
 import { randomUUID } from 'node:crypto'
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
@@ -14,7 +13,6 @@ import { initInstructions } from './instructions.mjs'
 import { createBrowserRouter, generateAdminPassword } from './browser-routes.mjs'
 import { logger } from './logger.mjs'
 import { initAgentRegistry, rememberConnection } from './agent-registry.mjs'
-import { loadTlsOptions } from './tls-options.mjs'
 import { names } from './names.mjs'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
@@ -22,6 +20,8 @@ import { fileURLToPath } from 'node:url'
 
 const app = express()
 const PORT = process.env.PORT || 3000
+const APP_HOST = process.env.APP_HOST || '127.0.0.1'
+const APP_PORT = process.env.APP_PORT || '3001'
 const SERVICE_API_KEY = process.env.API_KEY && process.env.API_KEY !== 'change-to-your-api-key'
   ? process.env.API_KEY
   : null
@@ -32,9 +32,6 @@ if (!SERVICE_API_KEY) {
 const ADMIN_USER = process.env.ADMIN_USER || null
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null
 const DATA_DIR = process.env.DATA_DIR || '/app/data'
-const toDataPath = (p) => (p && !p.startsWith('/')) ? join(DATA_DIR, p) : p
-const SSL_CERT_FILE = toDataPath(process.env.SSL_CERT_FILE || join(DATA_DIR, 'cert.pem'))
-const SSL_KEY_FILE = toDataPath(process.env.SSL_KEY_FILE || join(DATA_DIR, 'key.pem'))
 
 app.set('trust proxy', true)
 
@@ -248,27 +245,6 @@ app.use('/browser.app', createBrowserRouter(manager, {
   dataDir: DATA_DIR
 }))
 
-let tlsOptions = null
-try {
-  tlsOptions = await loadTlsOptions(SSL_CERT_FILE, SSL_KEY_FILE)
-} catch (err) {
-  logger.warn(`TLS not enabled: ${err.message}`)
-}
-
-if (tlsOptions) {
-  try {
-    const server = createHttpsServer(tlsOptions, app)
-    server.listen(PORT, () => {
-      logger.info(`MCP Memory Server running on port ${PORT} with TLS and authentication enabled.`)
-    })
-  } catch (err) {
-    logger.warn(`TLS setup failed: ${err.message}. Falling back to plain HTTP.`)
-    app.listen(PORT, () => {
-      logger.info(`MCP Memory Server running on port ${PORT} with authentication enabled.`)
-    })
-  }
-} else {
-  app.listen(PORT, () => {
-    logger.info(`MCP Memory Server running on port ${PORT} with authentication enabled.`)
-  })
-}
+app.listen(Number(APP_PORT), APP_HOST, () => {
+  logger.info(`MCP Memory Server running on ${APP_HOST}:${APP_PORT} (nginx serves the public port ${PORT}).`)
+})

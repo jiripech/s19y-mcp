@@ -18,35 +18,42 @@ MIT, ISC, BSD-2-Clause, and BSD-3-Clause licensed packages. The
 `@modelcontextprotocol` MCP project is transitioning new contributions
 to Apache-2.0; existing MIT-licensed code remains MIT.
 
-## Base Image: `node:current-alpine`
+## Base Image: `node:current-bookworm`
 
-The container image is built on top of the Node.js Alpine Linux image.
-The following components are bundled as separate programs by the image,
-not combined with the S19y application code into a derivative work.
+The container image is built on top of the Node.js Debian Bookworm
+image. The following components are bundled as separate programs by
+the image, not combined with the S19y application code into a
+derivative work.
 
 - **Node.js** -- MIT (permissive). Retain copyright notice.
-- **musl libc** -- MIT (permissive). Retain copyright notice.
+- **glibc** -- LGPL-2.1 (copyleft; linked dynamically). Source:
+  <https://sourceware.org/glibc/>
 - **OpenSSL** -- Apache-2.0 (permissive). Retain notice; do not use
   "OpenSSL" to endorse derived products.
-- **BusyBox** -- GPL-2.0 (copyleft). Source:
-  <https://busybox.net/downloads/source/>
-- **Alpine Linux distribution** -- GPL-2.0 (copyleft). Source:
-  <https://gitlab.alpinelinux.org/alpine/aports>
+- **Debian GNU/Linux distribution** -- GPL-2.0 (copyleft). Source:
+  <https://www.debian.org/>
+- **nginx** -- BSD-2-Clause (permissive). Retain copyright notice.
+  Source: <https://nginx.org/>
 
-### GPL-2.0 Source Offer
+### OpenSSL License / Copying
 
-BusyBox and the Alpine Linux distribution are licensed under the GNU
-General Public License, version 2 (GPL-2.0). They are separate programs
-bundled by the base image and are not combined with this project's
-application code. In accordance with GPL-2.0, full source code for
-these components is available:
+OpenSSL is licensed under the Apache-2.0, with the additional
+"OpenSSL" branding restriction: you may not use the name "OpenSSL" to
+endorse or promote products derived from this software without prior
+written permission.
 
-- BusyBox: <https://busybox.net/downloads/source/>
-- Alpine Linux (aports):
-  <https://gitlab.alpinelinux.org/alpine/aports>
+### Copyleft Note
 
-License texts for GPL-2.0 components are available at
-<https://www.gnu.org/licenses/old-licenses/gpl-2.0.html>.
+glibc is licensed under the GNU Lesser General Public License, version
+2.1 (LGPL-2.1). The S19y application and the bundled llama.cpp program
+link against glibc dynamically; they are separate works. Full license
+text and source information are available at
+<https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html> and
+<https://sourceware.org/glibc/>.
+
+Debian, the distribution, is governed by the Debian Free Software
+Guidelines; each package carries its own license. The base image is a
+prebuilt artifact of <https://hub.docker.com/_/node>.
 
 ## License Texts
 
@@ -56,9 +63,13 @@ License texts for GPL-2.0 components are available at
 - BSD-2-Clause / BSD-3-Clause:
   <https://opensource.org/licenses/BSD-2-Clause>,
   <https://opensource.org/licenses/BSD-3-Clause>
+- nginx license (BSD-2-Clause variant):
+  <https://nginx.org/LICENSE>
 - ISC: <https://opensource.org/licenses/ISC>
 - GPL-2.0:
   <https://www.gnu.org/licenses/old-licenses/gpl-2.0.html>
+- LGPL-2.1:
+  <https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html>
 
 This notice is provided for compliance with the licenses of the
 third-party components. It does not grant any rights beyond those

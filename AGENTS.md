@@ -123,7 +123,9 @@ tags mutable for `latest` to track releases.
 | Variable                  | Description                | Default             |
 | ------------------------- | -------------------------- | ------------------- |
 | `API_KEY`                 | MCP client auth key        | generated           |
-| `PORT`                    | Server port                | 3000                |
+| `PORT`                    | Public port (nginx)        | 3000                |
+| `APP_PORT`                | Internal app port          | 3001                |
+| `APP_HOST`                | Internal app host          | 127.0.0.1           |
 | `DATA_DIR`                | Data storage directory     | /app/data           |
 | `REGISTRATION_TOKEN`      | Browser registration token | none                |
 | `BROWSER_HOSTNAME`        | WebAuthn RP ID             | hostname            |
@@ -154,6 +156,16 @@ with `/`. The bundled LLM download is retried `LLM_RETRIES` times;
 the server waits up to `LLM_TIMEOUT` seconds for llama-server and
 refreshes `llm.status` every `LLM_WATCH_MS` ms so the banner recovers
 to `ready` once the endpoint responds.
+
+TLS is terminated by the bundled nginx, not Node itself: nginx
+listens on the public `PORT` and proxies to the Node app on
+`APP_HOST:APP_PORT` (loopback). When both `SSL_CERT_FILE` and
+`SSL_KEY_FILE` (unencrypted PEM) are present, nginx serves HTTPS on
+`PORT`; otherwise it serves plain HTTP. A valid TLS setup requires
+`BROWSER_SCHEME=https` and `BROWSER_HOSTNAME` matching the public
+hostname for WebAuthn. nginx runs with streaming proxy settings
+(`proxy_buffering off`, long timeouts) so MCP SSE/Streamable HTTP
+connections are not buffered.
 
 ## Markdown Rules
 

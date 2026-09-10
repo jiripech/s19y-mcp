@@ -4,6 +4,9 @@
 DATA_DIR="${DATA_DIR:-/app/data}"
 MAX_MODEL_DOWNLOAD_RETRIES="${LLM_RETRIES:-3}"
 LLM_TIMEOUT="${LLM_TIMEOUT:-120}"
+PORT="${PORT:-3000}"
+APP_HOST="${APP_HOST:-127.0.0.1}"
+APP_PORT="${APP_PORT:-3001}"
 
 llm_status() {
   echo "$1" >"$DATA_DIR/llm.status"
@@ -14,6 +17,75 @@ resolve_data_path() {
     /*|"") printf '%s' "$1" ;;
     *) printf '%s/%s' "$DATA_DIR" "$1" ;;
   esac
+}
+
+write_nginx_config() {
+  # $1 = 1 when TLS should be enabled, 0 for plain HTTP
+  NGINX_CONFIG=/etc/nginx/nginx.conf
+  TLS_CERT="$(resolve_data_path "${SSL_CERT_FILE:-cert.pem}")"
+  TLS_KEY="$(resolve_data_path "${SSL_KEY_FILE:-key.pem}")"
+  if [ "$1" = "1" ]; then
+    LISTEN_LINE="listen 0.0.0.0:$PORT ssl;"
+    TLS_BLOCK="ssl_certificate $TLS_CERT;
+    ssl_certificate_key $TLS_KEY;
+    ssl_protocols TLSv1.2 TLSv1.3;"
+  else
+    LISTEN_LINE="listen 0.0.0.0:$PORT;"
+    TLS_BLOCK=""
+  fi
+  cat >"$NGINX_CONFIG" <<EOF
+worker_processes 1;
+events {
+  worker_connections 1024;
+}
+http {
+  include /etc/nginx/mime.types;
+  default_type application/octet-stream;
+  sendfile on;
+  access_log /dev/stdout;
+  error_log /dev/stderr warn;
+  proxy_http_version 1.1;
+  proxy_buffering off;
+  proxy_read_timeout 3600s;
+  proxy_send_timeout 3600s;
+  proxy_request_buffering off;
+  server {
+    $LISTEN_LINE
+    $TLS_BLOCK
+    client_max_body_size 64m;
+    location / {
+      proxy_pass http://$APP_HOST:$APP_PORT;
+      proxy_set_header Host \$host;
+      proxy_set_header X-Real-IP \$remote_addr;
+      proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+  }
+}
+EOF
+}
+
+start_nginx() {
+  write_nginx_config 0
+  CERT="$(resolve_data_path "${SSL_CERT_FILE:-cert.pem}")"
+  KEY="$(resolve_data_path "${SSL_KEY_FILE:-key.pem}")"
+  if [ -s "$CERT" ] && [ -s "$KEY" ]; then
+    write_nginx_config 1
+    if nginx -t >/dev/null 2>&1; then
+      echo "[INFO] nginx serving TLS on port $PORT ($CERT)."
+      nginx -g 'daemon off;' &
+      return 0
+    fi
+    echo "[WARN] TLS certificate or key in $DATA_DIR is invalid; falling back to plain HTTP on port $PORT."
+    write_nginx_config 0
+  else
+    echo "[INFO] No TLS certificate found; nginx serving plain HTTP on port $PORT."
+    if [ ! -e "$CERT" ] && [ ! -e "$KEY" ]; then
+      echo "[INFO] Drop cert.pem and key.pem into $DATA_DIR and restart to enable HTTPS."
+    fi
+  fi
+  nginx -g 'daemon off;' &
+  return 0
 }
 
 check_api_key() {
@@ -70,7 +142,7 @@ start_llm() {
   echo "[INFO] Starting llama-server (port $LLM_PORT, context $LLM_CONTEXT, threads $LLM_THREADS)..."
   llm_status "starting"
   LD_LIBRARY_PATH=/usr/local/lib/llama \
-    /usr/local/lib/llama/llama-server -m "$MODEL_PATH" -c "$LLM_CONTEXT" -t "$LLM_THREADS" \
+    stdbuf -oL -eL /usr/local/lib/llama/llama-server -m "$MODEL_PATH" -c "$LLM_CONTEXT" -t "$LLM_THREADS" \
     --host 127.0.0.1 --port "$LLM_PORT" >"$DATA_DIR/llama-server.log" 2>&1 &
   LLAMA_PID=$!
 
@@ -105,6 +177,7 @@ mkdir -p "$DATA_DIR"
 
 if check_api_key; then
   echo "[INFO] API_KEY ready. Starting server..."
+  start_nginx
   start_llm &
   exec node server.mjs
 fi

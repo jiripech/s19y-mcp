@@ -5,7 +5,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential cmake git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
-RUN git clone --depth 1 https://github.com/ggerganov/llama.cpp.git .
+# Pin to a stable llama.cpp release: follows the project's new vX.Y.Z
+# stable tags instead of chasing a moving HEAD (HEAD snapshots can
+# crash with SIGILL on some CPUs due to runtime dispatch bugs).
+RUN git clone --depth 1 --branch v0.4.0 https://github.com/ggerganov/llama.cpp.git .
 # GGML_NATIVE=OFF: on aarch64 the native flag mismatches gcc's
 # baseline with fp16 NEON intrinsics; runtime dispatch works on
 # both amd64 and arm64
@@ -15,8 +18,9 @@ RUN cmake -B build -DGGML_NATIVE=OFF \
 
 FROM node:current-bookworm
 
-# Keep base packages patched
-RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
+# Keep base packages patched; nginx terminates TLS in front of Node
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends nginx \
+    && rm -rf /var/lib/apt/lists/*
 
 # llama.cpp builds the server binary plus its shared libraries
 # (libllama-server-impl.so, ggml backends) - copy the whole set
@@ -36,7 +40,6 @@ COPY migrate.mjs .
 COPY compressor.mjs .
 COPY llm-watch.mjs .
 COPY logger.mjs .
-COPY tls-options.mjs .
 COPY names.mjs .
 COPY name-pool.mjs .
 COPY agent-registry.mjs .
@@ -59,6 +62,8 @@ RUN chmod +x entrypoint.sh
 
 # Environment configuration
 ENV PORT=3000
+ENV APP_PORT=3001
+ENV APP_HOST=127.0.0.1
 ENV DATA_DIR=/app/data
 ENV MEMORY_FILE_PATH=/app/data/memory.jsonl
 ENV NODE_OPTIONS=--disable-warning=ExperimentalWarning
