@@ -56,8 +56,12 @@ jobs:
           tags: ${{ steps.meta.outputs.TAGS }}
           build-args: |
             BUILD_TAG=${{ github.ref_name }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=gha
+            ${{ github.event_name != 'pull_request' && format('type=registry,ref={0}/{1}/{2}:buildcache', env.REGISTRY, env.NAMESPACE, env.IMAGE_NAME) || '' }}
+          cache-to: |
+            type=gha,mode=max
+            ${{ github.event_name != 'pull_request' && format('type=registry,mode=max,ref={0}/{1}/{2}:buildcache', env.REGISTRY, env.NAMESPACE, env.IMAGE_NAME) || '' }}
 
       - name: Create GitHub release
         if: github.ref_type == 'tag'

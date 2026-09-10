@@ -5,6 +5,67 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog][kac], and this project adheres to
 [Semantic Versioning][semver].
 
+## [Unreleased]
+
+## [0.16.1] - 2026-09-10
+
+### Fixed (0.16.1)
+
+- llama-server no longer crashes with SIGILL (exit 132, empty
+  `llama-server.log`) on CPUs that lack AVX. With `GGML_NATIVE=OFF`
+  the ggml CMake `INS_ENB` logic silently enables every `GGML_<ISA>`
+  option, which compiles the whole x86 backend with global
+  `-mavx2/-mfma/-mf16c/-mavx/-msse4.2/-mbmi2` flags; on the NAS vCPU
+  (no AVX, no XSAVE) the first executed AVX instruction faults
+  (`traps: llama-server trap invalid opcode ... in libggml-cpu.so`).
+  The Dockerfile now disables all `GGML_<ISA>` options so the backend
+  builds against the portable SSE2 baseline and runs on every x86-64
+  CPU (generic kernels are used, so throughput on old CPUs is lower).
+
+### CI (0.16.1)
+
+- The Docker build now keeps its layer cache in the Docker Hub
+  registry under a `buildcache` ref in addition to the ephemeral
+  GitHub Actions cache, so pushed builds reuse the cached llama.cpp
+  compile and npm layers and local builds can pull the same cache
+  (see the decision record below)
+
+### Decision: CI build caching (pros/cons)
+
+Splitting the build into separate push-to-registry base images was
+considered instead. Recorded so the trade-off is not re-litigated.
+
+Problem: `docker/build-push-action` rebuilds the whole image on each
+push; the dominant cost is the llama.cpp compile stage (two
+platforms, under QEMU). npm `npm ci` and the nginx `apt-get` layer
+add to it.
+
+Option A - registry BuildKit cache (`type=registry`):
+
+- Pros: one-line workflow change; caches **all** stages including the
+  llama.cpp compile; per-architecture; usable by local `docker build
+  --cache-from` too; nothing to keep in sync - the cache is just
+  blobs under a `buildcache` tag.
+- Cons: cache lives in the same Docker Hub image repo (a second tag);
+  `cache-to` runs only on push builds (PRs keep gha cache, and a
+  private repo would not allow anonymous cache pulls); large cache
+  blobs add modest push/export time.
+
+Option B - published deps base image (`s19y-mcp-deps`):
+
+- Pros: deterministic digest-pinned artifact; survives cache eviction;
+  local builds are fast after the first pull.
+- Cons: needs a second Dockerfile, a second CI job with
+  "rebuild on lockfile change" triggering, and a discipline rule so
+  the deps image never goes stale; diverts attention from the
+  dominant cost (llama compile), which the deps image would not
+  cache.
+
+Result: chose **Option A** - it captures the llama.cpp compile cache
+(the real win) and helps local builds with a fraction of the
+maintenance of Option B. Revisit Option B only if reproducibility or
+cache-eviction resistance ever becomes a hard requirement.
+
 ## [0.16.0] - 2026-09-10
 
 ### Added (0.16.0)
@@ -472,6 +533,7 @@ Initial release of the S19y MCP Server with the following features:
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html
+[0.16.1]: https://github.com/jiripech/s19y-mcp/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/jiripech/s19y-mcp/compare/v0.15.1...v0.16.0
 [0.15.1]: https://github.com/jiripech/s19y-mcp/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/jiripech/s19y-mcp/compare/v0.14.1...v0.15.0

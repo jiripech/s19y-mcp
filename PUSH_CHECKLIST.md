@@ -49,6 +49,8 @@ example commands to the current repo.
 - [ ] Required secrets are set (no "missing secret" failures)
 - [ ] Pushes on version tags run the release job (not just the
   build-without-push job)
+- [ ] Registry cache ref (`...:buildcache`) is present and writable
+  (build cache is exported there on push builds)
 - [ ] Caveats are checked (e.g. Docker Hub tag immutability must be
   disabled so `latest` can be re-pointed)
 

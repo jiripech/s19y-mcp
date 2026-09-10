@@ -11,8 +11,18 @@ WORKDIR /src
 RUN git clone --depth 1 --branch v0.4.0 https://github.com/ggerganov/llama.cpp.git .
 # GGML_NATIVE=OFF: on aarch64 the native flag mismatches gcc's
 # baseline with fp16 NEON intrinsics; runtime dispatch works on
-# both amd64 and arm64
+# both amd64 and arm64. IMPORTANT: with GGML_NATIVE=OFF the cmake
+# INS_ENB logic enables *every* GGML_<ISA> option by default, which
+# compiles the whole x86 backend with global -mavx2/-mfma/-mf16c
+# flags. On NAS CPUs without AVX (e.g. old/virtualized x86_64) the
+# first execute AVX instruction faults with SIGILL (exit 132, empty
+# log). Force the portable SSE2 baseline by disabling all of them.
 RUN cmake -B build -DGGML_NATIVE=OFF \
+    -DGGML_SSE42=OFF -DGGML_AVX=OFF -DGGML_AVX2=OFF \
+    -DGGML_FMA=OFF -DGGML_F16C=OFF -DGGML_BMI2=OFF \
+    -DGGML_AVX_VNNI=OFF -DGGML_AVX512=OFF -DGGML_AVX512_VBMI=OFF \
+    -DGGML_AVX512_VNNI=OFF -DGGML_AVX512_BF16=OFF \
+    -DGGML_AMX_TILE=OFF -DGGML_AMX_INT8=OFF -DGGML_AMX_BF16=OFF \
     && cmake --build build --config Release -j"$(nproc)" \
     && strip build/bin/llama-server
 

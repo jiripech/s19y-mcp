@@ -41,6 +41,15 @@ API_KEY=your-key docker compose up
 - **Error handling**:
   Return JSON error responses with appropriate HTTP status codes
 
+## Standard operations
+
+1. Focus on development efficiency.
+2. Adhere to KISS/DRY, SOLID and clean code principles.
+3. Avoid denied tools/commands.
+4. Always delegate keeping notes from lessons learned in parallel
+   before executing a long running task like tests.
+5. Strictly use allowed tools/commands without chaining with '&&', '|', '||', etc.
+
 ## Project Structure
 
 ```text
@@ -87,7 +96,11 @@ To add a new MCP tool:
 The CI workflow is defined in `.github/workflows/docker-build-push.yml`.
 It builds a multi-arch image (linux/amd64, linux/arm64) on push to
 `main` and on version tags, and pushes to Docker Hub. Pull requests
-build without pushing.
+build without pushing. Layer cache is exported to a `buildcache` tag
+in the same Docker Hub repository on push builds (pulled by CI and by
+local `docker build --cache-from`); PRs use only the ephemeral GitHub
+Actions cache. See the decision record under `[Unreleased]` in
+`CHANGELOG.md`.
 
 - Validate the workflow with:
   `actionlint .github/workflows/docker-build-push.yml`
