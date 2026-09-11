@@ -8,7 +8,7 @@ const agentsFile = join(infoDir, 'agents.md')
 const legacyAgentsFile = join(dataDir, 'AGENTS.md')
 const TRANSPOSE_MARKER = (name) => `<!-- memory: ${name} -->`
 const CONTENT_PATTERN = /^(priority: |tags: |u: |p: |exp: |cr: |cs: |source: |compressed: |importance: )/
-const TITLE_MAX = 60
+const TITLE_MAX = 78
 const WRAP_WIDTH = 80
 
 function titleFrom(content) {

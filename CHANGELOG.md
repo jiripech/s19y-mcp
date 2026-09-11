@@ -27,6 +27,9 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
   `MAIL_FROM` as the `From:` header, listing each log and its size. If
   `LOG_ADMIN` is unset or the mail cannot be sent, the memory browser
   shows a `⚠️` banner and the reason stays in the docker log.
+- Transposed instruction headings in `DATA_DIR/info/agents.md` now use
+  the full first line up to 78 chars (kept ≤80 for markdownlint)
+  instead of the previous arbitrary 60-char cut.
 
 ## [0.17.0] - 2026-09-11
 
