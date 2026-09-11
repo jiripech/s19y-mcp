@@ -17,6 +17,16 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
   default the access log goes to `DATA_DIR/nginx-access.log` so docker
   logs stay clean; set `NGINX_DEBUG=true` to stream it to `/dev/stdout`.
   `error_log` always stays on `/dev/stderr`.
+- Log fencing on startup: `llama-server.log` and `nginx-access.log`
+  are checked against `LOG_MAX_SIZE` (bare number = MiB, or a
+  `B/K/M/G` suffix, default `100M`). Oversized logs are compressed to
+  timestamped `.gz` archives in `DATA_DIR` and a fresh empty log is
+  opened.
+- `LOG_ADMIN` alerting: when a log fence trips, an e-mail is sent via
+  `SMTP_SERVER`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASSWORD` with
+  `MAIL_FROM` as the `From:` header, listing each log and its size. If
+  `LOG_ADMIN` is unset or the mail cannot be sent, the memory browser
+  shows a `⚠️` banner and the reason stays in the docker log.
 
 ## [0.17.0] - 2026-09-11
 

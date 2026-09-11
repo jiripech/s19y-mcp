@@ -287,14 +287,20 @@ export function createBrowserRouter(manager, options = {}) {
 
   router.get('/api/status', wrap(async (req, res) => {
     let llm = 'unknown'
+    let logWarning = null
     if (dataDir) {
       try {
         llm = (await readFile(join(dataDir, 'llm.status'), 'utf8')).trim() || 'unknown'
       } catch {
         llm = 'unknown'
       }
+      try {
+        logWarning = (await readFile(join(dataDir, 'log-warning'), 'utf8')).trim() || null
+      } catch {
+        logWarning = null
+      }
     }
-    res.json({ llm, server: 's19y-memory' })
+    res.json({ llm, server: 's19y-memory', logWarning })
   }))
 
   router.get('/api/agent-pool', requireAuth, wrap(async (req, res) => {

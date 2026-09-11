@@ -150,6 +150,13 @@ tags mutable for `latest` to track releases.
 | `COMPRESSION_INTERVAL_MS` | Tick interval (ms)         | 60000               |
 | `COMPRESSION_TIMEOUT_MS`  | Request timeout (ms)       | 120000              |
 | `NGINX_DEBUG`             | nginx access log to stdout | false               |
+| `LOG_MAX_SIZE`            | Log fence threshold        | 100M                |
+| `LOG_ADMIN`               | Alert e-mail address       | none                |
+| `SMTP_SERVER`             | SMTP relay host            | none                |
+| `SMTP_PORT`               | SMTP relay port            | 587                 |
+| `SMTP_USER`               | SMTP username              | none                |
+| `SMTP_PASSWORD`           | SMTP password              | none                |
+| `MAIL_FROM`               | From: header line          | none                |
 | `LLM_ENABLED`             | Bundled llama-server       | true                |
 | `LLM_MODEL_URL`           | GGUF download URL          | Qwen2.5-3B (HF)     |
 | `LLM_MODEL_PATH`          | GGUF file location         | model.gguf          |
@@ -181,6 +188,15 @@ listens on the public `PORT` and proxies to the Node app on
 hostname for WebAuthn. nginx runs with streaming proxy settings
 (`proxy_buffering off`, long timeouts) so MCP SSE/Streamable HTTP
 connections are not buffered.
+
+Log fencing: at startup, `llama-server.log` and `nginx-access.log`
+(respecting `NGINX_DEBUG`) are checked against `LOG_MAX_SIZE` (bare
+number = MiB, or a `B/K/M/G` suffix). An oversized log is compressed
+into a timestamped `.gz` archive in `DATA_DIR` and a fresh file is
+opened. `LOG_ADMIN` is emailed (via `SMTP_*`/`MAIL_FROM`, no
+default) with the log names and sizes; if `LOG_ADMIN` is unset or the
+mail cannot be sent, the browser shows a `⚠️` banner pointing at
+`DATA_DIR/log-warning` and the docker log.
 
 ## Markdown Rules
 

@@ -333,6 +333,13 @@ browser - the pages warn about this. Options:
 | `COMPRESSION_INTERVAL_MS` | Tick interval (ms)    | `60000`                   |
 | `COMPRESSION_TIMEOUT_MS`  | Request timeout (ms)  | `120000`                  |
 | `NGINX_DEBUG`             | nginx access log      | `false`                   |
+| `LOG_MAX_SIZE`            | Log fence threshold   | `100M`                    |
+| `LOG_ADMIN`               | Alert e-mail address  | `none`                    |
+| `SMTP_SERVER`             | SMTP relay host       | `none`                    |
+| `SMTP_PORT`               | SMTP relay port       | `587`                     |
+| `SMTP_USER`               | SMTP username         | `none`                    |
+| `SMTP_PASSWORD`           | SMTP password         | `none`                    |
+| `MAIL_FROM`               | From: header          | `none`                    |
 | `LLM_ENABLED`             | Bundled model on/off  | `true`                    |
 | `LLM_MODEL_URL`           | GGUF download URL     | Qwen2.5-3B (HF)           |
 | `LLM_MODEL_PATH`          | GGUF file location    | `<DATA_DIR>/model.gguf`   |
@@ -360,6 +367,16 @@ key is generated and printed to the server log at startup. The memory
 compressor defaults to the bundled llama-server (see
 [Memory compressor](#memory-compressor)); `COMPRESSION_ENDPOINT=none`
 disables it, and any OpenAI-compatible URL can replace it.
+
+Log fencing runs at startup: `llama-server.log` and `nginx-access.log`
+(respecting `NGINX_DEBUG`) are checked against `LOG_MAX_SIZE` (bare
+number = MiB, or a `B`/`K`/`M`/`G` suffix). Oversized logs are gzip-ed
+into timestamped archives in `<DATA_DIR>` and a fresh file is opened.
+If `LOG_ADMIN` is set, an alert with the log names and sizes is sent
+via SMTP (`SMTP_SERVER`, `SMTP_PORT`, `SMTP_USER`/`SMTP_PASSWORD` as
+needed, `MAIL_FROM` as the `From:` header). When the alert cannot be
+delivered (or `LOG_ADMIN` is unset), the browser shows a `⚠️` banner
+and the details stay in the docker log.
 
 TLS is terminated by the bundled nginx proxy, not by Node. nginx
 listens on the public `PORT` and proxies to the Node app on

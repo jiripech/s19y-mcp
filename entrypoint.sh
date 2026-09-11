@@ -8,6 +8,8 @@ PORT="${PORT:-3000}"
 APP_HOST="${APP_HOST:-127.0.0.1}"
 APP_PORT="${APP_PORT:-3001}"
 NGINX_DEBUG="${NGINX_DEBUG:-false}"
+LOG_MAX_SIZE="${LOG_MAX_SIZE:-100M}"
+SMTP_PORT="${SMTP_PORT:-587}"
 
 llm_status() {
   echo "$1" >"$DATA_DIR/llm.status"
@@ -18,6 +20,126 @@ resolve_data_path() {
     /*|"") printf '%s' "$1" ;;
     *) printf '%s/%s' "$DATA_DIR" "$1" ;;
   esac
+}
+
+parse_size() {
+  # Converts LOG_MAX_SIZE ("4096B", "1K", "100M", "2G", or a bare
+  # integer meaning mebibytes) to bytes. Prints digits only.
+  val="${LOG_MAX_SIZE}"
+  num="${val%[kKmMgGtTbB]}"
+  case "${val}" in
+    *[kKmMgGtTbB]) unit="$(printf '%s' "${val}" | tail -c 1)" ;;
+    *) unit='M' ;;
+  esac
+  case "${unit}" in
+    b|B) mult=1 ;;
+    k|K) mult=1024 ;;
+    g|G) mult=1073741824 ;;
+    t|T) mult=1099511627776 ;;
+    *) mult=1048576 ;;
+  esac
+  printf '%s' "$((num * mult))"
+}
+
+format_bytes() {
+  b="$1"
+  if [ "$b" -ge 1073741824 ]; then
+    awk "BEGIN{printf \"%.1f GiB\", $b/1073741824}"
+  elif [ "$b" -ge 1048576 ]; then
+    awk "BEGIN{printf \"%.1f MiB\", $b/1048576}"
+  elif [ "$b" -ge 1024 ]; then
+    awk "BEGIN{printf \"%.1f KiB\", $b/1024}"
+  else
+    printf '%d B' "$b"
+  fi
+}
+
+rotate_log() {
+  file="$1"
+  label="$2"
+  [ -f "${file}" ] || return 0
+  bytes="$(wc -c < "${file}" | tr -d ' ')"
+  [ "${bytes}" -gt "${MAX_LOG_BYTES}" ] || return 0
+  stamp="$(date +%Y%m%d%H%M%S)"
+  archive="${file}-${stamp}.gz"
+  if gzip -c "${file}" > "${archive}"; then
+    : > "${file}"
+  else
+    echo "[WARN] Failed to compress the ${label} log (${file}); leaving it as-is."
+    return 1
+  fi
+  LOG_WARN=1
+  WARN_TEXT="${WARN_TEXT:+${WARN_TEXT}\n}- ${label} log: $(format_bytes "${bytes}")"
+  echo "[INFO] Rotated oversized ${label} log (${bytes} bytes) to ${archive}; fresh log opened."
+}
+
+mail_from_envelope() {
+  case "${MAIL_FROM}" in
+    *'<'*) printf '%s' "${MAIL_FROM}" | sed 's/.*<\([^>]*\)>.*/\1/' ;;
+    *) printf '%s' "${MAIL_FROM}" ;;
+  esac
+}
+
+send_log_alert() {
+  if [ -z "${LOG_ADMIN:-}" ]; then
+    echo '[WARN] LOG_ADMIN not set; oversized log(s) rotated but nobody was emailed.'
+    return 1
+  fi
+  if [ -z "${MAIL_FROM:-}" ]; then
+    echo '[WARN] MAIL_FROM not set; cannot email the log alert.'
+    return 1
+  fi
+  if [ -z "${SMTP_SERVER:-}" ]; then
+    echo '[WARN] SMTP_SERVER not set; cannot email the log alert.'
+    return 1
+  fi
+  mailfile="${DATA_DIR}/.log-alert.mail"
+  {
+    printf 'To: %s\n' "${LOG_ADMIN}"
+    printf 'From: %s\n' "${MAIL_FROM}"
+    printf 'Subject: [s19y-mcp] oversized log rotated on %s\n' "$(hostname)"
+    printf 'Date: %s\n\n' "$(date)"
+    printf 'Log fencing triggered at startup on host %s.\n\n' "$(hostname)"
+    printf '%b\n' "${WARN_TEXT}"
+    printf '\nEach file was compressed to a timestamped .gz archive in DATA_DIR\n'
+    printf 'and a fresh, empty log file was opened. See docker logs for details.\n'
+  } > "${mailfile}"
+  FROM_ADDR="$(mail_from_envelope)"
+  if [ -n "${SMTP_USER:-}" ]; then
+    curl -sS --ssl-reqd --mail-from "${FROM_ADDR}" --mail-rcpt "${LOG_ADMIN}" \
+      -u "${SMTP_USER}:${SMTP_PASSWORD}" --upload-file "${mailfile}" \
+      "smtp://${SMTP_SERVER}:${SMTP_PORT}"
+  else
+    curl -sS --ssl-reqd --mail-from "${FROM_ADDR}" --mail-rcpt "${LOG_ADMIN}" \
+      --upload-file "${mailfile}" "smtp://${SMTP_SERVER}:${SMTP_PORT}"
+  fi
+  ok=$?
+  rm -f "${mailfile}"
+  if [ "$ok" -ne 0 ]; then
+    echo '[WARN] SMTP send failed; see the error above. Log alert was not delivered.'
+    return 1
+  fi
+  echo "[INFO] Log alert emailed to ${LOG_ADMIN}."
+  return 0
+}
+
+rotate_and_alert() {
+  MAX_LOG_BYTES="$(parse_size)"
+  LOG_WARN=""
+  WARN_TEXT=""
+  rotate_log "${DATA_DIR}/llama-server.log" llama-server
+  rotate_log "${DATA_DIR}/nginx-access.log" nginx-access
+  if [ -z "${LOG_WARN}" ]; then
+    rm -f "${DATA_DIR}/log-warning"
+    return 0
+  fi
+  echo '[WARN] Oversized log(s) found on startup; see docker log for details.'
+  if send_log_alert; then
+    rm -f "${DATA_DIR}/log-warning"
+  else
+    printf 'Oversized log(s) rotated (%b); alert not delivered. See docker logs.\n' \
+      "${WARN_TEXT}" > "${DATA_DIR}/log-warning"
+  fi
 }
 
 write_nginx_config() {
@@ -183,6 +305,7 @@ mkdir -p "$DATA_DIR"
 
 if check_api_key; then
   echo "[INFO] API_KEY ready. Starting server..."
+  rotate_and_alert
   start_nginx
   start_llm &
   exec node server.mjs

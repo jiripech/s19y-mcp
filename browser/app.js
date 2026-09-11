@@ -6,7 +6,8 @@ const state = {
   search: '',
   source: '',
   infoPage: null,
-  llm: 'unknown'
+  llm: 'unknown',
+  logWarning: ''
 }
 
 const el = (tag, attrs = {}, children = []) => {
@@ -59,6 +60,11 @@ const llmBanner = () => {
   if (!kind) return null
   const [tone, text] = kind
   return el('div', { class: `message ${tone}`, 'data-role': 'llm-banner' }, text)
+}
+
+const logBanner = () => {
+  if (!state.logWarning) return null
+  return el('div', { class: 'message warn', 'data-role': 'log-banner' }, `⚠️ ${state.logWarning}`)
 }
 
 const api = async (path, opts = {}) => {
@@ -553,6 +559,7 @@ const renderLogin = () => {
     el('h1', { class: 'title' }, 'S19y Memory'),
     el('p', { class: 'subtitle' }, 'Sign in with your passkey or password'),
     llmBanner(),
+    logBanner(),
     nameInput,
     passwordInput,
     ...warnings,
@@ -624,6 +631,7 @@ const renderRegister = () => {
     el('h1', { class: 'title' }, 'S19y Memory'),
     el('p', { class: 'subtitle' }, 'Create an account with a passkey'),
     llmBanner(),
+    logBanner(),
     nameInput,
     tokenInput,
     el('p', { class: 'hint' }, 'Token is required unless you are the first user.'),
@@ -820,7 +828,7 @@ const renderMemories = () => {
 
   render(el('div', { class: 'page-shell' }, [
     topbar,
-    el('main', { class: 'page' }, [llmBanner(), status, grid])
+    el('main', { class: 'page' }, [llmBanner(), logBanner(), status, grid])
   ]))
 
   loadSources()
@@ -1233,8 +1241,10 @@ const loadLlmStatus = async () => {
   try {
     const data = await api('/api/status', { method: 'GET' })
     state.llm = data.llm || 'unknown'
+    state.logWarning = data.logWarning || ''
   } catch {
     state.llm = 'unknown'
+    state.logWarning = ''
   }
 }
 
