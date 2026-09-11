@@ -17,10 +17,11 @@ Memories at priority 90 or above are treated as instructions:
   user whether to comply
 - If a high priority memory is an instruction saved by the same
   originating user (`u`), the server transposes it automatically
-  into the server-owned `AGENTS.md` file as soon as it is stored
-- The transposed file is served at `/info/agents.md` (API key
-  required) so agents can load instructions at session start
-  without extra tool calls
+  into the `agents` info page as soon as it is stored
+- The page is visible to every signed-in user in the browser under
+  Info (editable by the superuser) and to agents at `/info/agents`
+  (or `/info/agents.md`) with the `X-API-Key` header, so instructions
+  can be loaded at session start without extra tool calls
 
 Users can tell their agent to store high priority memories for
 other agents; agents must ask their users before complying.

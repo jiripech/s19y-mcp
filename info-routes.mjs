@@ -1,10 +1,5 @@
 import { Router } from 'express'
-import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
 import { listInfoPages, readInfoPage } from './info-store.mjs'
-
-const dataDir = process.env.DATA_DIR || '/app/data'
-const agentsFile = join(dataDir, 'AGENTS.md')
 
 export function createInfoRouter(apiKey) {
   const router = Router()
@@ -22,15 +17,8 @@ export function createInfoRouter(apiKey) {
   })
 
   router.get('/:name', auth, async (req, res) => {
-    if (req.params.name === 'agents.md') {
-      try {
-        const content = await readFile(agentsFile, 'utf8')
-        return res.type('text/markdown').send(content)
-      } catch {
-        return res.status(404).json({ error: 'Page not found' })
-      }
-    }
-    const page = await readInfoPage(req.params.name)
+    const name = req.params.name.replace(/\.md$/, '')
+    const page = await readInfoPage(name)
     if (!page) {
       return res.status(404).json({ error: 'Page not found' })
     }

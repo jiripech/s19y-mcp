@@ -1,9 +1,11 @@
-import { readFile, writeFile, rename, access } from 'node:fs/promises'
-import { join } from 'node:path'
+import { mkdir, readFile, writeFile, rename, access } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import { logger } from './logger.mjs'
 
 const dataDir = process.env.DATA_DIR || '/app/data'
-const agentsFile = join(dataDir, 'AGENTS.md')
+const infoDir = join(dataDir, 'info')
+const agentsFile = join(infoDir, 'agents.md')
+const legacyAgentsFile = join(dataDir, 'AGENTS.md')
 const TRANSPOSE_MARKER = (name) => `<!-- memory: ${name} -->`
 const CONTENT_PATTERN = /^(priority: |tags: |u: |p: |exp: |cr: |cs: |source: |compressed: |importance: )/
 const TITLE_MAX = 60
@@ -67,10 +69,17 @@ export async function initInstructions() {
   try {
     await access(agentsFile)
   } catch {
-    const header = '# Server instructions\n\n' +
+    let legacy = null
+    try {
+      legacy = await readFile(legacyAgentsFile, 'utf8')
+    } catch {}
+    const header = legacy ?? (
+      '# Server instructions\n\n' +
       'High priority memories (90+) are transposed here automatically.\n'
+    )
+    await mkdir(dirname(agentsFile), { recursive: true })
     await writeFile(agentsFile, header)
-    logger.info(`Initialized ${agentsFile}`)
+    logger.info(`Initialized ${agentsFile}${legacy ? ' (migrated from legacy AGENTS.md)' : ''}`)
   }
 }
 
@@ -99,9 +108,10 @@ export async function transposeInstruction(entity) {
       return
     }
     const tmpFile = `${agentsFile}.tmp`
+    await mkdir(dirname(agentsFile), { recursive: true })
     await writeFile(tmpFile, current + section)
     await rename(tmpFile, agentsFile)
-    logger.info(`Instruction from memory ${entity.name} transposed into AGENTS.md`)
+    logger.info(`Instruction from memory ${entity.name} transposed into ${agentsFile}`)
   } catch (err) {
     logger.error(`Failed to transpose memory ${entity.name} into AGENTS.md: ${err.message}`)
   }

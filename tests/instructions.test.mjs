@@ -20,11 +20,17 @@ describe('Instruction transpose', () => {
     rmSync(dataDir, { recursive: true, force: true })
   })
 
-  it('initializes the AGENTS.md file', () => {
-    assert.ok(existsSync(join(dataDir, 'AGENTS.md')))
+  it('initializes the agents info page', async () => {
+    assert.ok(existsSync(join(dataDir, 'info', 'agents.md')))
   })
 
-  it('transposes a priority 90 memory into AGENTS.md', async () => {
+  it('lists the agents page in the info store', async () => {
+    const infoStore = await import('../info-store.mjs')
+    const pages = await infoStore.listInfoPages()
+    assert.ok(pages.some(p => p.name === 'agents'))
+  })
+
+  it('transposes a priority 90 memory into the agents info page', async () => {
     await mod.transposeInstruction({
       name: 'memory_checklist',
       observations: [
@@ -35,7 +41,7 @@ describe('Instruction transpose', () => {
         'source: Aemilius Papinianus the 2nd'
       ]
     })
-    const content = readFileSync(join(dataDir, 'AGENTS.md'), 'utf8')
+    const content = readFileSync(join(dataDir, 'info', 'agents.md'), 'utf8')
     assert.match(content, /Before-Push Checklist content/)
     assert.match(content, /Author metadata: u jiri\.pech, p s19y-mcp/)
   })
@@ -48,7 +54,7 @@ describe('Instruction transpose', () => {
       name: 'memory_wrapped',
       observations: [longContent, 'priority: 90', 'u: jiri.pech']
     })
-    const content = readFileSync(join(dataDir, 'AGENTS.md'), 'utf8')
+    const content = readFileSync(join(dataDir, 'info', 'agents.md'), 'utf8')
     const section = content.slice(content.indexOf('<!-- memory: memory_wrapped -->'))
     for (const line of section.split('\n')) {
       assert.ok(line.length <= 80, `line exceeds 80 chars: ${line.length}`)
@@ -61,7 +67,7 @@ describe('Instruction transpose', () => {
       name: 'memory_low',
       observations: ['plain content', 'priority: 50']
     })
-    const content = readFileSync(join(dataDir, 'AGENTS.md'), 'utf8')
+    const content = readFileSync(join(dataDir, 'info', 'agents.md'), 'utf8')
     assert.doesNotMatch(content, /plain content/)
   })
 
@@ -75,7 +81,7 @@ describe('Instruction transpose', () => {
         'p: s19y-mcp'
       ]
     })
-    const content = readFileSync(join(dataDir, 'AGENTS.md'), 'utf8')
+    const content = readFileSync(join(dataDir, 'info', 'agents.md'), 'utf8')
     assert.strictEqual((content.match(/<!-- memory: memory_checklist -->/g) || []).length, 1)
   })
 })

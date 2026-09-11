@@ -18,9 +18,10 @@ Glass UI).
 - Browse, search and filter memories (by source, including
   **System** and **Unclaimed** attributions)
 - Info pages (this site) with search - readable by all signed-in
-  users
+  users, including the auto-generated **Agents** page (priority 90+
+  instructions)
 - Superuser: create/edit/delete any memory, manage users and the
-  registration token, edit info pages
+  registration token, edit info pages (Agents included)
 
 ## Agents and info pages
 
@@ -28,5 +29,5 @@ Agents read the same pages via HTTP with the MCP API key:
 
 ```bash
 curl -H "X-API-Key: <key>" http://<host>:<port>/info/
-curl -H "X-API-Key: <key>" http://<host>:<port>/info/priorities
+curl -H "X-API-Key: <key>" http://<host>:<port>/info/agents
 ```

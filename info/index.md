@@ -7,6 +7,8 @@ the server effectively.
 
 - [Agent identity](agent-identity.html) - codenames, stable names,
   the shared name pool
+- [Server instructions](agents.html) - priority 90+ memories
+  transposed for all agents
 - [Memory attributes](attributes.html) - source, u, p, exp, ttl,
   priority, compression flags
 - [Priorities](priorities.html) - the 0-100 range and what 90+ means

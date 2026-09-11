@@ -197,14 +197,16 @@ The server serves markdown info pages:
 
 - Humans: the `#/info` view in the memory browser (searchable);
   the superuser edits pages in the admin area
-- Agents: `GET /info/` (list) and `GET /info/<name>` with the
-  `X-API-Key` header, plus `GET /info/agents.md`
+- Agents: `GET /info/` (list) and `GET /info/<name>` (an optional
+  `.md` suffix is accepted) with the `X-API-Key` header
 
 Pages live in `<DATA_DIR>/info/` and are seeded on first start.
 Memories with priority 90+ are treated as instructions: the server
-automatically transposes them into a server-owned `AGENTS.md` file
-served at `/info/agents.md`, so agents can load user instructions
-at session start with a single HTTP call.
+transposes them into the `agents` page as soon as they are stored.
+The page is listed in the browser (visible to every signed-in user
+and editable by the superuser) and served to agents at
+`/info/agents`, so instructions can be loaded at session start
+without extra tool calls.
 
 ### Details
 
