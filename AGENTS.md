@@ -148,6 +148,7 @@ tags mutable for `latest` to track releases.
 | `COMPRESSION_ENDPOINT`    | Compression endpoint       | bundled             |
 | `COMPRESSION_MODEL`       | Compression model          | qwen2.5-3b-instruct |
 | `COMPRESSION_INTERVAL_MS` | Tick interval (ms)         | 60000               |
+| `COMPRESSION_TIMEOUT_MS`  | Request timeout (ms)       | 120000              |
 | `LLM_ENABLED`             | Bundled llama-server       | true                |
 | `LLM_MODEL_URL`           | GGUF download URL          | Qwen2.5-3B (HF)     |
 | `LLM_MODEL_PATH`          | GGUF file location         | model.gguf          |

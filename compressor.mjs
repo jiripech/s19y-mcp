@@ -5,6 +5,7 @@ const COMPRESSION_DISABLED = /^(none|disabled|false|0)$/i.test(rawEndpoint.trim(
 const COMPRESSION_ENDPOINT = rawEndpoint.trim() || 'http://127.0.0.1:8080/v1'
 const COMPRESSION_MODEL = process.env.COMPRESSION_MODEL || 'qwen2.5-3b-instruct'
 const COMPRESSION_INTERVAL_MS = Math.max(10000, parseInt(process.env.COMPRESSION_INTERVAL_MS, 10) || 60000)
+const COMPRESSION_TIMEOUT_MS = Math.max(10000, parseInt(process.env.COMPRESSION_TIMEOUT_MS, 10) || 120000)
 
 const ATTRIBUTE_PATTERN = /^(priority: |tags: |u: |p: |exp: |cr: |cs: |source: )/
 
@@ -24,7 +25,7 @@ const compress = async (content) => {
       max_tokens: 512,
       temperature: 0.2
     }),
-    signal: AbortSignal.timeout(120000)
+    signal: AbortSignal.timeout(COMPRESSION_TIMEOUT_MS)
   })
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`)

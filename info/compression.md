@@ -45,8 +45,9 @@ Any OpenAI-compatible API works instead of the bundled model
 (ollama, vllm, OpenAI, ...). The default endpoint is the bundled
 llama-server at `http://127.0.0.1:8080/v1`.
 
-| Variable                  | Meaning                                |
-| ------------------------- | -------------------------------------- |
-| `COMPRESSION_ENDPOINT`    | base URL incl. `/v1` (`none` disables) |
-| `COMPRESSION_MODEL`       | model name sent with requests          |
-| `COMPRESSION_INTERVAL_MS` | tick interval (default 60000)          |
+| Variable                   | Meaning                                |
+| -------------------------- | -------------------------------------- |
+| `COMPRESSION_ENDPOINT`     | base URL incl. `/v1` (`none` disables) |
+| `COMPRESSION_MODEL`        | model name sent with requests          |
+| `COMPRESSION_INTERVAL_MS`  | tick interval (default 60000)          |
+| `COMPRESSION_TIMEOUT_MS`   | request timeout (default 120000)       |

@@ -7,6 +7,13 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
 
 ## [Unreleased]
 
+### Added (Unreleased)
+
+- `COMPRESSION_TIMEOUT_MS` makes the per-request compression timeout
+  configurable (default 120000 ms). Slow hosts (bundled llama-server on
+  a weak CPU) can now extend it instead of seeing every request abort
+  against the fixed two-minute limit.
+
 ## [0.17.0] - 2026-09-11
 
 ### Added (0.17.0)

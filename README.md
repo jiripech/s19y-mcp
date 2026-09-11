@@ -331,6 +331,7 @@ browser - the pages warn about this. Options:
 | `COMPRESSION_ENDPOINT`    | Compression endpoint  | bundled (`127.0.0.1`)     |
 | `COMPRESSION_MODEL`       | Compression model     | `qwen2.5-3b-instruct`     |
 | `COMPRESSION_INTERVAL_MS` | Tick interval (ms)    | `60000`                   |
+| `COMPRESSION_TIMEOUT_MS`  | Request timeout (ms)  | `120000`                  |
 | `LLM_ENABLED`             | Bundled model on/off  | `true`                    |
 | `LLM_MODEL_URL`           | GGUF download URL     | Qwen2.5-3B (HF)           |
 | `LLM_MODEL_PATH`          | GGUF file location    | `<DATA_DIR>/model.gguf`   |
