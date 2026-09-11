@@ -8,6 +8,63 @@
   --accent: #7c9aff;
   --radius: 20px;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --fs-display: 26px;
+  --fs-hero: 22px;
+  --fs-heading: 20px;
+  --fs-title: 18px;
+  --fs-brand: 17px;
+  --fs-subhead: 16px;
+  --fs-lead: 15px;
+  --fs-body: 14px;
+  --fs-meta: 13px;
+  --fs-code: 12.5px;
+  --fs-small: 12px;
+  --fs-tiny: 11px;
+}
+
+html[data-font-scale='-1'] {
+  --fs-display: 24px;
+  --fs-hero: 20px;
+  --fs-heading: 18px;
+  --fs-title: 16px;
+  --fs-brand: 15px;
+  --fs-subhead: 15px;
+  --fs-lead: 14px;
+  --fs-body: 13px;
+  --fs-meta: 12px;
+  --fs-code: 11.5px;
+  --fs-small: 11px;
+  --fs-tiny: 10px;
+}
+
+html[data-font-scale='1'] {
+  --fs-display: 29px;
+  --fs-hero: 25px;
+  --fs-heading: 23px;
+  --fs-title: 21px;
+  --fs-brand: 19px;
+  --fs-subhead: 18px;
+  --fs-lead: 17px;
+  --fs-body: 15.5px;
+  --fs-meta: 14.5px;
+  --fs-code: 14px;
+  --fs-small: 13.5px;
+  --fs-tiny: 12.5px;
+}
+
+html[data-font-scale='2'] {
+  --fs-display: 33px;
+  --fs-hero: 28px;
+  --fs-heading: 26px;
+  --fs-title: 24px;
+  --fs-brand: 21px;
+  --fs-subhead: 20px;
+  --fs-lead: 19px;
+  --fs-body: 17px;
+  --fs-meta: 16px;
+  --fs-code: 15.5px;
+  --fs-small: 15px;
+  --fs-tiny: 14px;
 }
 
 * {
@@ -111,7 +168,7 @@ body::after {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-body);
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
@@ -148,7 +205,7 @@ body::after {
 
 .btn.small {
   padding: 6px 14px;
-  font-size: 13px;
+  font-size: var(--fs-meta);
 }
 
 .input {
@@ -176,7 +233,7 @@ textarea.input {
   resize: vertical;
   min-height: 90px;
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: var(--fs-code);
   line-height: 1.5;
 }
 
@@ -201,7 +258,7 @@ select.input option {
 }
 
 .brand {
-  font-size: 17px;
+  font-size: var(--fs-brand);
   font-weight: 300;
   letter-spacing: 3px;
   text-transform: uppercase;
@@ -215,7 +272,19 @@ select.input option {
 }
 
 .topbar .select {
-  flex: 0 1 170px;
+  flex: 0 1 360px;
+  min-width: 240px;
+}
+
+.font-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.font-controls .btn {
+  min-width: 36px;
+  padding: 6px 10px;
 }
 
 .spacer {
@@ -230,12 +299,12 @@ select.input option {
 }
 
 .user-badge-name {
-  font-size: 13px;
+  font-size: var(--fs-meta);
   font-weight: 400;
 }
 
 .user-badge-role {
-  font-size: 11px;
+  font-size: var(--fs-tiny);
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -282,16 +351,29 @@ select.input option {
   gap: 8px;
 }
 
+.card-head-start,
+.card-head-end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.card-head-end {
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
 .memory-content {
   flex: 1;
-  font-size: 14px;
+  font-size: var(--fs-body);
   line-height: 1.55;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
 
 .source {
-  font-size: 12px;
+  font-size: var(--fs-small);
   letter-spacing: 0.5px;
   color: var(--text-dim);
 }
@@ -303,7 +385,7 @@ select.input option {
 }
 
 .chip {
-  font-size: 11px;
+  font-size: var(--fs-tiny);
   padding: 3px 10px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
@@ -318,13 +400,37 @@ select.input option {
 }
 
 .badge {
-  font-size: 11px;
+  font-size: var(--fs-tiny);
   font-weight: 600;
   letter-spacing: 0.5px;
   padding: 3px 10px;
   border-radius: 999px;
   border: 1px solid;
   white-space: nowrap;
+}
+
+.id-badge {
+  font-family: var(--mono);
+  font-weight: 400;
+  letter-spacing: 0;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-dim);
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.id-badge:hover {
+  color: var(--accent);
+  border-color: rgba(124, 154, 255, 0.55);
+}
+
+.id-badge.copied {
+  color: #6ee7b7;
+  border-color: rgba(110, 231, 183, 0.5);
 }
 
 .imp-low {
@@ -377,20 +483,20 @@ select.input option {
 }
 
 .title {
-  font-size: 26px;
+  font-size: var(--fs-display);
   font-weight: 200;
   letter-spacing: 6px;
   text-transform: uppercase;
 }
 
 .subtitle {
-  font-size: 14px;
+  font-size: var(--fs-body);
   color: var(--text-dim);
   margin-bottom: 8px;
 }
 
 .alt-link {
-  font-size: 13px;
+  font-size: var(--fs-meta);
   color: var(--text-dim);
   margin-top: 8px;
 }
@@ -405,7 +511,7 @@ select.input option {
 }
 
 .message {
-  font-size: 13px;
+  font-size: var(--fs-meta);
   padding: 10px 14px;
   border-radius: 12px;
   overflow-wrap: anywhere;
@@ -433,7 +539,7 @@ select.input option {
   grid-column: 1 / -1;
   padding: 48px 20px;
   text-align: center;
-  font-size: 15px;
+  font-size: var(--fs-lead);
   letter-spacing: 0.5px;
   color: var(--text-dim);
 }
@@ -461,7 +567,7 @@ select.input option {
 }
 
 .modal-title {
-  font-size: 18px;
+  font-size: var(--fs-title);
   font-weight: 300;
   letter-spacing: 1px;
 }
@@ -469,7 +575,7 @@ select.input option {
 .modal label {
   display: block;
   margin-bottom: 6px;
-  font-size: 12px;
+  font-size: var(--fs-small);
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -483,7 +589,7 @@ select.input option {
 }
 
 .section-title {
-  font-size: 15px;
+  font-size: var(--fs-lead);
   font-weight: 400;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -492,7 +598,7 @@ select.input option {
 }
 
 .hint {
-  font-size: 13px;
+  font-size: var(--fs-meta);
   color: var(--text-dim);
 }
 
@@ -517,7 +623,7 @@ select.input option {
 .user-meta {
   display: block;
   margin-top: 2px;
-  font-size: 12px;
+  font-size: var(--fs-small);
   color: var(--text-dim);
 }
 
@@ -578,13 +684,13 @@ select.input option {
 }
 
 .info-item-name {
-  font-size: 14px;
+  font-size: var(--fs-body);
   font-weight: 400;
   overflow-wrap: anywhere;
 }
 
 .info-item-meta {
-  font-size: 11px;
+  font-size: var(--fs-tiny);
   color: var(--text-dim);
 }
 
@@ -595,8 +701,16 @@ select.input option {
   padding: 24px;
 }
 
+.info-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .info-title {
-  font-size: 20px;
+  font-size: var(--fs-heading);
   font-weight: 300;
   letter-spacing: 1px;
   overflow-wrap: anywhere;
@@ -604,7 +718,7 @@ select.input option {
 
 .md {
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: var(--fs-meta);
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
@@ -618,15 +732,15 @@ select.input option {
 }
 
 .md h1 {
-  font-size: 22px;
+  font-size: var(--fs-hero);
 }
 
 .md h2 {
-  font-size: 18px;
+  font-size: var(--fs-title);
 }
 
 .md h3 {
-  font-size: 16px;
+  font-size: var(--fs-subhead);
 }
 
 .md h1:first-child,
@@ -655,11 +769,48 @@ select.input option {
 
 .md code {
   font-family: var(--mono);
-  font-size: 12.5px;
+  font-size: var(--fs-code);
   padding: 2px 6px;
   border-radius: 6px;
   background: rgba(10, 16, 34, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.md table {
+  border-collapse: collapse;
+  margin: 12px 0;
+  width: 100%;
+  font-size: var(--fs-small);
+}
+
+.md th,
+.md td {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.md th {
+  background: rgba(10, 16, 34, 0.5);
+  font-weight: 500;
+}
+
+.md tbody tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.md-source {
+  font-family: var(--mono);
+  font-size: var(--fs-code);
+  line-height: 1.6;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(10, 16, 34, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .md pre {

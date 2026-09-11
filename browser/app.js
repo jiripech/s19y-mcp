@@ -30,6 +30,21 @@ const render = (node) => {
   app.replaceChildren(node)
 }
 
+const fontControls = () => el('span', { class: 'font-controls' }, [
+  el('button', {
+    class: 'btn small',
+    type: 'button',
+    title: 'Decrease font size',
+    onclick: () => adjustFontScale(-1)
+  }, 'A−'),
+  el('button', {
+    class: 'btn small',
+    type: 'button',
+    title: 'Increase font size',
+    onclick: () => adjustFontScale(1)
+  }, 'A+')
+])
+
 const LLM_MESSAGES = {
   disabled: ['info', 'Memory compression is disabled.'],
   downloading: ['warn', 'Language model downloading… Compression will work after it finishes.'],
@@ -96,6 +111,33 @@ const navigate = (hash) => {
   }
 }
 
+const FONT_SCALE_KEY = 's19y.fontScale'
+
+const loadFontScale = () => {
+  try {
+    return Math.max(-1, Math.min(2, Number(localStorage.getItem(FONT_SCALE_KEY)) || 0))
+  } catch {
+    return 0
+  }
+}
+
+const applyFontScale = (scale = loadFontScale()) => {
+  const clamped = Math.max(-1, Math.min(2, scale))
+  try {
+    localStorage.setItem(FONT_SCALE_KEY, String(clamped))
+  } catch {
+  }
+  if (clamped === 0) {
+    document.documentElement.removeAttribute('data-font-scale')
+  } else {
+    document.documentElement.setAttribute('data-font-scale', String(clamped))
+  }
+}
+
+const adjustFontScale = (delta) => {
+  applyFontScale(loadFontScale() + delta)
+}
+
 const formatDate = (iso) => {
   const date = new Date(iso)
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
@@ -121,6 +163,28 @@ const escapeHtml = (value) => String(value)
   .replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&#39;')
+
+const copyText = async (text) => {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+  }
+  const area = el('textarea', { readOnly: true })
+  area.value = text
+  area.style.position = 'fixed'
+  area.style.opacity = '0'
+  document.body.append(area)
+  area.select()
+  let copied = true
+  try {
+    document.execCommand('copy')
+  } catch {
+    copied = false
+  }
+  area.remove()
+  return copied
+}
 
 const isSafeUrl = (url) => {
   const decoded = url.replace(/&amp;/g, '&')
@@ -183,6 +247,33 @@ const renderMarkdown = (text) => {
       }
       container.append(list)
       continue
+    }
+    if (/^\s*\|.*\|\s*$/.test(line) &&
+        index + 1 < lines.length &&
+        /^\s*\|[\s|:-]+\|\s*$/.test(lines[index + 1])) {
+      const header = line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(cell => cell.trim())
+      const align = lines[index + 1].trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(cell => cell.trim())
+      if (align.every(cell => /^:?-+:?\s*$/.test(cell))) {
+        index += 2
+        const tbody = el('tbody', {})
+        while (index < lines.length && /^\s*\|.*\|\s*$/.test(lines[index])) {
+          const cells = lines[index].trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(cell => cell.trim())
+          const row = el('tr', {})
+          for (let cell = 0; cell < header.length; cell++) {
+            row.append(mdNode('td', cells[cell] ?? ''))
+          }
+          tbody.append(row)
+          index++
+        }
+        const headRow = el('tr', {})
+        for (const cell of header) {
+          headRow.append(mdNode('th', cell))
+        }
+        const table = el('table', {})
+        table.append(el('thead', {}, headRow), tbody)
+        container.append(table)
+        continue
+      }
     }
     if (line.trim() === '') {
       index++
@@ -611,13 +702,35 @@ const renderMemories = () => {
       memory.u && memory.u !== 'Unclaimed' ? el('span', { class: 'chip' }, memory.u) : null,
       memory.p && memory.p !== 'Unclaimed' ? el('span', { class: 'chip' }, memory.p) : null
     ].filter(Boolean)
+    const idBadge = el('button', {
+      class: 'badge id-badge',
+      type: 'button',
+      title: `Copy ID: ${memory.name}`,
+      onclick: async (event) => {
+        event.stopPropagation()
+        const badge = event.currentTarget
+        if (await copyText(memory.name)) {
+          badge.textContent = 'Copied'
+          badge.classList.add('copied')
+          setTimeout(() => {
+            badge.textContent = memory.name
+            badge.classList.remove('copied')
+          }, 1200)
+        }
+      }
+    }, memory.name)
     return el('article', { class: 'card memory-card' }, [
       el('div', { class: 'card-head' }, [
-        memory.exp != null && memory.exp * 1000 < Date.now()
-          ? el('span', { class: 'badge imp-critical' }, 'Expired')
-          : null,
-        el('span', { class: `badge ${priorityClass(priority)}` }, `Priority ${priority}`),
-        memory.source ? el('span', { class: 'source' }, memory.source) : null
+        el('div', { class: 'card-head-start' }, [
+          idBadge,
+          memory.exp != null && memory.exp * 1000 < Date.now()
+            ? el('span', { class: 'badge imp-critical' }, 'Expired')
+            : null
+        ]),
+        el('div', { class: 'card-head-end' }, [
+          el('span', { class: `badge ${priorityClass(priority)}` }, `Priority ${priority}`),
+          memory.source ? el('span', { class: 'source' }, memory.source) : null
+        ])
       ]),
       el('p', { class: 'memory-content' }, memory.content || memory.name),
       chips.length > 0 ? el('div', { class: 'chips' }, chips) : null,
@@ -679,6 +792,7 @@ const renderMemories = () => {
     searchInput,
     sourceSelect,
     el('span', { class: 'spacer' }),
+    fontControls(),
     isSuperuser
       ? el('button', {
           class: 'btn small primary',
@@ -835,6 +949,7 @@ const renderAdmin = () => {
   const topbar = el('header', { class: 'topbar' }, [
     el('span', { class: 'brand' }, 'S19y Memory'),
     el('span', { class: 'spacer' }),
+    fontControls(),
     el('a', { class: 'btn small', href: '#/memories' }, 'Back to memories'),
     el('span', { class: 'user-badge' }, [
       el('span', { class: 'user-badge-name' }, state.user.name),
@@ -874,6 +989,7 @@ const renderInfo = () => {
   let pages = []
   let contents = {}
   let selected = state.infoPage
+  let mode = 'preview'
   state.infoPage = null
 
   const renderView = () => {
@@ -882,22 +998,36 @@ const renderInfo = () => {
       pageView.append(el('div', { class: 'empty' }, 'No info pages'))
       return
     }
-    pageView.append(el('h2', { class: 'info-title' }, selected))
-    if (isSuperuser) {
-      pageView.append(el('div', { class: 'card-actions' }, [
+    pageView.append(el('div', { class: 'info-head' }, [
+      el('h2', { class: 'info-title' }, selected),
+      el('div', { class: 'card-actions' }, [
         el('button', {
           class: 'btn small',
           type: 'button',
-          onclick: () => openInfoModal({ name: selected }, loadPages)
-        }, 'Edit'),
-        el('button', {
-          class: 'btn small danger',
-          type: 'button',
-          onclick: () => deleteInfoPage(selected, loadPages)
-        }, 'Delete')
-      ]))
+          onclick: () => {
+            mode = mode === 'source' ? 'preview' : 'source'
+            renderView()
+          }
+        }, mode === 'source' ? 'Preview' : 'Source'),
+        ...(isSuperuser ? [
+          el('button', {
+            class: 'btn small',
+            type: 'button',
+            onclick: () => openInfoModal({ name: selected }, loadPages)
+          }, 'Edit'),
+          el('button', {
+            class: 'btn small danger',
+            type: 'button',
+            onclick: () => deleteInfoPage(selected, loadPages)
+          }, 'Delete')
+        ] : [])
+      ])
+    ]))
+    if (mode === 'source') {
+      pageView.append(el('pre', { class: 'md-source' }, contents[selected] || ''))
+    } else {
+      pageView.append(renderMarkdown(contents[selected] || ''))
     }
-    pageView.append(renderMarkdown(contents[selected] || ''))
   }
 
   const renderList = () => {
@@ -959,6 +1089,7 @@ const renderInfo = () => {
   const topbar = el('header', { class: 'topbar' }, [
     el('span', { class: 'brand' }, 'S19y Memory'),
     el('span', { class: 'spacer' }),
+    fontControls(),
     isSuperuser
       ? el('button', {
           class: 'btn small primary',
@@ -1030,6 +1161,7 @@ const loadLlmStatus = async () => {
 }
 
 const boot = async () => {
+  applyFontScale()
   await loadLlmStatus()
   try {
     const data = await api('/api/session')
