@@ -5,10 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog][kac], and this project adheres to
 [Semantic Versioning][semver].
 
-## [Unreleased]
+## [0.18.0] - 2026-09-11
 
-### Added (Unreleased)
+### Added (0.18.0)
 
+- `get_session_id` opencode plugin (`.opencode/plugin/session-id.ts`)
+  exposes the client session ID as an MCP tool so agents can anchor
+  their shared-memory identity to a stable `ses_...` ID across
+  compactions and `opencode -c` resumes
 - `COMPRESSION_TIMEOUT_MS` makes the per-request compression timeout
   configurable (default 120000 ms). Slow hosts (bundled llama-server on
   a weak CPU) can now extend it instead of seeing every request abort
@@ -611,6 +615,8 @@ Initial release of the S19y MCP Server with the following features:
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html
+[0.18.0]: https://github.com/jiripech/s19y-mcp/compare/v0.17.0...v0.18.0
+[0.17.0]: https://github.com/jiripech/s19y-mcp/compare/v0.16.1...v0.17.0
 [0.16.1]: https://github.com/jiripech/s19y-mcp/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/jiripech/s19y-mcp/compare/v0.15.1...v0.16.0
 [0.15.1]: https://github.com/jiripech/s19y-mcp/compare/v0.15.0...v0.15.1
