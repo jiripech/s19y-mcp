@@ -220,3 +220,8 @@ commands.
 - The permission config denies `sleep *` except exactly `sleep 5`.
   Don't write arbitrary `sleep 8` in bash; rely on the tool timeout or
   `sleep 5`.
+- On resume, recover your shared-memory identity by session ID: call
+  `get_session_id` (plugin in `.opencode/plugin/`), then search the
+  memory server for a tagged `identity-anchor` record mapping that
+  `ses_...` ID to a `source`. Do not trust compaction summaries for
+  identity - only the anchor record on the server is authoritative.

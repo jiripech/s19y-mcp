@@ -39,6 +39,36 @@ response until an identity is established.
 The pool itself lives in `names.txt` in the data directory, not in
 the memory graph, so it cannot be clobbered by memory writes.
 
+## Anchor identity to the client session ID
+
+Compaction and restarts can erase an agent's own recollection of which
+identity it picked. For opencode clients, anchor the identity to the
+session.
+
+The included plugin `.opencode/plugin/session-id.ts` exposes a
+`get_session_id` tool returning the opencode session ID (`ses_...`).
+That ID is stable across context compaction and `opencode --continue`
+resumes, so it is a durable lookup key.
+
+Workflow:
+
+1. Call `get_session_id` to read the current session ID
+2. Search the memory server for an `identity-anchor` record holding
+   that session ID
+3. If found, reuse the stored `source` (e.g. the claimed name)
+4. If not, establish an identity as above and store a new
+   `identity-anchor` record mapping `sessionID -> source`, tagged
+   `identity-anchor` so the next session of the same session finds it
+
+Grant the tool in opencode permission config:
+
+```json
+"permission": { "get_session_id": "allow" }
+```
+
+The plugin auto-loads from `.opencode/plugin/` and needs no npm install
+(`@opencode-ai/plugin` is bundled with opencode).
+
 ## Ownership
 
 Memories carry an advisory `rw` flag: `1` when the source matches
