@@ -7,6 +7,60 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-09-11
+
+### Added (0.17.0)
+
+- Agent ID badge now shows a clipboard icon with a tooltip containing
+  the session codename, source IP, and transport protocol
+- `list_available_names` MCP tool lets agents discover the next
+  available name without polling the info page
+- `GET /api/agent-pool` (auth) and `GET /api/agents` (superuser)
+  browser admin endpoints for inspecting the name pool and identified
+  agents
+- Agent registry merges identity history when the same source is
+  reused across sessions (preserves `firstSeen`, sums `connections`)
+- `tests/info-routes.test.mjs` covers the full info routing contract
+  including `.md` suffix compatibility
+
+### Changed (0.17.0)
+
+- Info page toggle renamed from "Source" to "Code" (class `md-source`
+  → `md-code`) to better reflect its purpose
+- Agent name pool decoupled from the memory graph: names are tracked
+  exclusively in `DATA_DIR/names.txt` via atomic tmp+rename writes,
+  eliminating the torn read-modify-write that could silently drop the
+  `agent_names` entity from `memory.jsonl`
+- Transposed p90+ instructions now write to `DATA_DIR/info/agents.md`
+  (a real info page) instead of a separate `DATA_DIR/AGENTS.md` file;
+  legacy paths are migrated automatically on startup
+- Info routes normalize the `.md` suffix uniformly for all pages
+  instead of relying on a hidden special-case for `agents.md`
+
+### Fixed (0.17.0)
+
+- `nextVariant` ordinal regex now correctly handles `Epictetus the
+  2nd`, `Cicero the 3rd`, etc. (previously used a non-anchored
+  alternation that could match stale suffixes)
+- `GET /info/` (agent HTTP API) now lists the agents page alongside
+  other info pages, making it visible to agents and the browser admin
+  equally
+
+### CI (0.17.0)
+
+- `scripts/preview-server.sh` dev helper manages the local preview
+  server lifecycle (start/stop/restart/status/verify) with pidfile
+  tracking under `tmp/`
+
+### Documentation (0.17.0)
+
+- `info/agent-identity.md` rewritten to document the file-only pool
+  and registry model
+- `info/index.md`, `info/priorities.md`, `info/browser.md` updated
+  to reference `DATA_DIR/info/agents.md`
+- `README.md` info pages section rewritten; agent identity docs
+  updated
+
 ## [0.16.1] - 2026-09-10
 
 ### Fixed (0.16.1)
