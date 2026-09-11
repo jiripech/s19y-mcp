@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
   configurable (default 120000 ms). Slow hosts (bundled llama-server on
   a weak CPU) can now extend it instead of seeing every request abort
   against the fixed two-minute limit.
+- `NGINX_DEBUG` (default `false`) controls nginx access logging: by
+  default the access log goes to `DATA_DIR/nginx-access.log` so docker
+  logs stay clean; set `NGINX_DEBUG=true` to stream it to `/dev/stdout`.
+  `error_log` always stays on `/dev/stderr`.
 
 ## [0.17.0] - 2026-09-11
 

@@ -7,6 +7,7 @@ LLM_TIMEOUT="${LLM_TIMEOUT:-120}"
 PORT="${PORT:-3000}"
 APP_HOST="${APP_HOST:-127.0.0.1}"
 APP_PORT="${APP_PORT:-3001}"
+NGINX_DEBUG="${NGINX_DEBUG:-false}"
 
 llm_status() {
   echo "$1" >"$DATA_DIR/llm.status"
@@ -33,6 +34,11 @@ write_nginx_config() {
     LISTEN_LINE="listen 0.0.0.0:$PORT;"
     TLS_BLOCK=""
   fi
+  if [ "$NGINX_DEBUG" = "true" ]; then
+    ACCESS_LOG="access_log /dev/stdout;"
+  else
+    ACCESS_LOG="access_log $DATA_DIR/nginx-access.log;"
+  fi
   cat >"$NGINX_CONFIG" <<EOF
 worker_processes 1;
 events {
@@ -42,7 +48,7 @@ http {
   include /etc/nginx/mime.types;
   default_type application/octet-stream;
   sendfile on;
-  access_log /dev/stdout;
+  $ACCESS_LOG
   error_log /dev/stderr warn;
   proxy_http_version 1.1;
   proxy_buffering off;
