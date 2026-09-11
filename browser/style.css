@@ -677,6 +677,43 @@ select.input option {
   color: var(--text-dim);
 }
 
+.agent-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  font-family: var(--mono);
+}
+
+.agent-name {
+  font-weight: 600;
+}
+
+.agent-meta {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--fs-tiny);
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.agent-tag {
+  font-family: var(--mono);
+  font-size: var(--fs-small);
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
 .token-row {
   display: flex;
   gap: 10px;

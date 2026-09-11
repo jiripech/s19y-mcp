@@ -140,9 +140,7 @@ searched across all agents, or narrowed to a single contributor.
 Memories returned by `retrieve_memory`, `search_memories`, and
 `list_memories` carry an advisory `rw` flag: `1` when the memory's
 source matches the calling session's claimed identity, `0` when it
-belongs to another identity, an unclaimed author, or the system.
-Agents are told to treat `rw: 0` memories as read-only; the system
-enforces this only for server-owned memories such as `agent_names`.
+belongs to another identity or an unclaimed author.
 Memories without any source are attributed to **Unclaimed** in the
 memory browser.
 
@@ -241,14 +239,14 @@ released back to the pool when the session closes.
 ### Agent self-identification
 
 Agents without an `X-Agent-Name` header can pick a permanent identity
-themselves: the server maintains a protected shared memory
-`agent_names` listing the currently available names (Roman
-philosophers). An agent retrieves it, chooses a name, introduces
-itself to its user with that name, and passes it as `source` on every
-`store_memory` and `update_memory` call. When the server sees a `source`
-matching an available name it marks it taken and rotates in the next
-ordinal variant ("Cicero" becomes "Cicero the 2nd", and so on), so the
-list always reflects what is still available.
+themselves: the server exposes a `list_available_names` MCP tool that
+returns the current pool contents (Roman philosophers). An agent
+calls it, chooses the first available name, introduces itself to its
+user with that name, and passes it as `source` on every `store_memory`
+and `update_memory` call. When the server sees a `source` matching an
+available name it marks it taken and rotates in the next ordinal
+variant ("Cicero" becomes "Cicero the 2nd", and so on), so the list
+always reflects what is still available.
 
 To make the requirement stick, the server appends an
 `identityNotice` to every tool response of an unidentified session
@@ -257,11 +255,10 @@ user) until the agent either arrives with an `X-Agent-Name` header
 or uses a `source` attribution for the first time.
 `GET /session` reports the current state via its `identified` field.
 
-The `agent_names` memory is managed by the server only: MCP
-`update_memory` / `delete_memory` and the browser superuser UI reject
-modifications. The available-name list is persisted in `names.txt`
-inside the data directory (seeded on first start) and restored from
-there on startup.
+The available-name list is persisted in `names.txt` inside the data
+directory (seeded on first start) and restored from there on startup.
+The pool is entirely file-based and lives outside the memory graph,
+so memory writes cannot interfere with it.
 
 Every connection is recorded in `agents.json` inside the data
 directory: the session UUID, the assigned codename, the transport and

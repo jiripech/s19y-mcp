@@ -2,9 +2,6 @@ import { readFile, writeFile, rename, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { logger } from './logger.mjs'
 
-const PROTECTED_MEMORY_NAME = 'agent_names'
-const SYSTEM_MARKER = 'system: reserved'
-
 const DEFAULT_NAMES = [
   'Aemilius Papinianus',
   'Agrippa the Skeptic',
@@ -58,7 +55,6 @@ const DEFAULT_NAMES = [
 const dataDir = process.env.DATA_DIR || '/app/data'
 let effectiveDataDir = dataDir
 let availableNames = []
-let managerRef = null
 let claimChain = Promise.resolve()
 
 const namesPath = () => join(effectiveDataDir, 'names.txt')
@@ -75,7 +71,7 @@ const ordinal = (n) => {
 }
 
 const nextVariant = (name) => {
-  const match = name.match(/^(.*) the (\d+)$/)
+  const match = name.match(/^(.*) the (\d+)(?:st|nd|rd|th)$/)
   if (match) {
     return `${match[1]} the ${ordinal(parseInt(match[2], 10) + 1)}`
   }
@@ -95,23 +91,18 @@ const persistNamesFile = async () => {
   await rename(tmpFile, namesPath())
 }
 
-const writePoolMemory = async () => {
-  if (!managerRef) return
-  const observations = [SYSTEM_MARKER, ...availableNames]
-  await managerRef.deleteEntities([PROTECTED_MEMORY_NAME])
-  await managerRef.createEntities([{
-    name: PROTECTED_MEMORY_NAME,
-    entityType: 'memory',
-    observations
-  }])
-}
-
-export const isProtectedMemory = (name) => name === PROTECTED_MEMORY_NAME
-
 export const getAvailableNames = () => [...availableNames]
 
-export async function initNamePool(manager) {
-  managerRef = manager
+export function getPoolState() {
+  return {
+    available: getAvailableNames(),
+    total: availableNames.length,
+    defaultTotal: DEFAULT_NAMES.length,
+    path: namesPath()
+  }
+}
+
+export async function initNamePool() {
   try {
     await mkdir(effectiveDataDir, { recursive: true })
     availableNames = (await readFile(namesPath(), 'utf8'))
@@ -123,12 +114,11 @@ export async function initNamePool(manager) {
     await persistNamesFile()
     logger.info(`Created ${namesPath()} with ${availableNames.length} default names`)
   }
-  await writePoolMemory()
   logger.info(`Agent name pool: ${availableNames.length} names available (${namesPath()})`)
 }
 
 export function claimName(source) {
-  if (!source || !managerRef) {
+  if (!source) {
     return Promise.resolve(false)
   }
   const run = async () => {
@@ -139,7 +129,6 @@ export function claimName(source) {
     const next = nextVariant(source)
     availableNames.splice(index, 1, next)
     await persistNamesFile()
-    await writePoolMemory()
     logger.info(`Agent identity "${source}" claimed, next available variant "${next}"`)
     return true
   }

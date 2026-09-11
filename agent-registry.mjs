@@ -66,6 +66,30 @@ export function getIdentifiedAgents() {
   return getAgents().filter(a => a.source)
 }
 
+export function getIdentities() {
+  const bySource = new Map()
+  for (const record of getAgents()) {
+    if (!record.source) continue
+    const existing = bySource.get(record.source)
+    if (!existing) {
+      bySource.set(record.source, { ...record })
+      continue
+    }
+    if (new Date(record.lastSeen || 0) > new Date(existing.lastSeen || 0)) {
+      existing.name = record.name
+      existing.lastSeen = record.lastSeen
+      existing.ip = record.ip || existing.ip
+      existing.transport = record.transport || existing.transport
+      existing.uuid = record.uuid
+    }
+    existing.firstSeen = existing.firstSeen || record.firstSeen
+    existing.connections = (existing.connections || 0) + (record.connections || 0)
+  }
+  return [...bySource.values()].sort((a, b) =>
+    new Date(b.lastSeen || 0) - new Date(a.lastSeen || 0)
+  )
+}
+
 export function findPreviousClaim({ uuid, name }) {
   for (const raw of Object.values(agents)) {
     if (raw.source && (raw.uuid === uuid || (name && raw.name === name))) {
@@ -109,15 +133,16 @@ export function rememberIdentity(uuid, source) {
     const now = new Date().toISOString()
     const existing = agents[uuid]
     if (!existing) {
+      const prior = Object.values(agents).find(a => a.source === source && a.uuid !== uuid)
       agents[uuid] = {
         uuid,
         name: source,
-        ip: null,
-        transport: null,
+        ip: prior && prior.ip ? prior.ip : null,
+        transport: prior && prior.transport ? prior.transport : null,
         source,
-        firstSeen: now,
+        firstSeen: prior ? (prior.firstSeen || now) : now,
         lastSeen: now,
-        connections: 1
+        connections: prior ? (prior.connections || 1) + 1 : 1
       }
     } else {
       existing.source = source

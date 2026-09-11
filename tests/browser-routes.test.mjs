@@ -59,4 +59,44 @@ describe('Browser router module', () => {
       server.close()
     }
   })
+
+  it('exposes the agent pool and registry to the superuser', async () => {
+    const express = (await import('express')).default
+    const { createBrowserRouter } = await import('../browser-routes.mjs')
+
+    const router = createBrowserRouter({}, { adminUser: 'admin', adminPassword: 'aaaaaaaa' })
+    const app = express()
+    app.use(express.json())
+    app.use(router)
+    const server = app.listen(0)
+    const base = `http://127.0.0.1:${server.address().port}`
+    try {
+      const login = await fetch(`${base}/api/login/begin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'admin', password: 'aaaaaaaa' })
+      })
+      assert.strictEqual(login.status, 200)
+      const cookie = login.headers.get('set-cookie').split(';')[0]
+
+      const poolRes = await fetch(`${base}/api/agent-pool`, {
+        headers: { Cookie: cookie }
+      })
+      assert.strictEqual(poolRes.status, 200)
+      const poolBody = await poolRes.json()
+      assert.ok(Array.isArray(poolBody.pool.available))
+      assert.strictEqual(typeof poolBody.pool.total, 'number')
+
+      const agentsRes = await fetch(`${base}/api/agents`, {
+        headers: { Cookie: cookie }
+      })
+      assert.strictEqual(agentsRes.status, 200)
+      const body = await agentsRes.json()
+      assert.ok(body.pool)
+      assert.ok(Array.isArray(body.identities))
+      assert.ok(Array.isArray(body.sessions))
+    } finally {
+      server.close()
+    }
+  })
 })

@@ -4,7 +4,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { KnowledgeGraphManager } from '@modelcontextprotocol/server-memory/dist/index.js'
 import { z } from 'zod'
 import { logger } from './logger.mjs'
-import { initNamePool, claimName, isProtectedMemory } from './name-pool.mjs'
+import { initNamePool, claimName, getAvailableNames } from './name-pool.mjs'
 import { rememberIdentity, findPreviousClaim } from './agent-registry.mjs'
 import { transposeInstruction } from './instructions.mjs'
 
@@ -31,7 +31,7 @@ async function resolveMemoryPath() {
 export async function createManager() {
   const memoryPath = await resolveMemoryPath()
   const manager = new KnowledgeGraphManager(memoryPath)
-  await initNamePool(manager)
+  await initNamePool()
   const graph = await manager.readGraph()
   logger.info(`Loaded ${graph.entities.length} memories and ${graph.relations.length} relations from ${memoryPath}`)
   return manager
@@ -48,10 +48,10 @@ export async function createServer(manager, options = {}) {
       const remembered = findPreviousClaim({ uuid: session.uuid, name: session.name })
       let notice =
         `Anonymous session (codename "${session.name}"). Before writing ` +
-        'anything, establish a permanent identity: retrieve the memory ' +
-        '"agent_names", pick an available name, tell your user which name ' +
-        'you picked, then pass it as source on every store_memory and ' +
-        'update_memory call.'
+        'anything, establish a permanent identity: call the ' +
+        'list_available_names tool, pick the FIRST available name in the ' +
+        'list, tell your user which name you picked, then pass it as ' +
+        'source on every store_memory and update_memory call.'
       if (remembered) {
         notice +=
           ` This session has a previously claimed identity "` +
@@ -202,11 +202,11 @@ export async function createServer(manager, options = {}) {
     instructions: 'Shared memory pool for multiple agents. Each session ' +
       'is assigned a codename shown in server logs. If no X-Agent-Name ' +
       'header was configured for your session, you MUST establish a ' +
-      'permanent identity before your first memory write: retrieve the ' +
-      'memory "agent_names", pick the FIRST available name in the list ' +
-      'rather than a personal favourite (favourites run out and high ' +
-      'ordinal variants make memories hard to filter for the admin), ' +
-      'and tell your user ' +
+      'permanent identity before your first memory write: call the ' +
+      'list_available_names tool, pick the FIRST available name in the ' +
+      'list rather than a personal favourite (favourites run out and ' +
+      'high ordinal variants make memories hard to filter for the ' +
+      'admin), and tell your user ' +
       'which name you picked - they need it to recognize your work in ' +
       'the memory browser. Then pass the name as source on every ' +
       'store_memory and update_memory call and keep it for all future ' +
@@ -216,9 +216,8 @@ export async function createServer(manager, options = {}) {
       'reminder on every tool response until you comply. Memories ' +
       'carry an rw flag: rw:1 means the memory belongs to your own ' +
       'identity and you may update or delete it, rw:0 belongs to ' +
-      'another identity or to the system - do not attempt to modify ' +
-      'rw:0 memories; system-owned memories (the names list) reject ' +
-      'modification and log the attempt. Search with search_memories ' +
+      'another identity; do not attempt to modify ' +
+      'rw:0 memories. Search with search_memories ' +
       'before storing to avoid duplicates. Memories may carry ' +
       'attributes: u (originating user), p (project), exp (UNIX ' +
       'expiry), priority (0-100; 90+ marks instructions that are ' +
@@ -303,6 +302,22 @@ export async function createServer(manager, options = {}) {
   )
 
   server.tool(
+    'list_available_names',
+    'List available agent names from the shared name pool',
+    {},
+    async () => {
+      const names = getAvailableNames()
+      const notice =
+        'Pick the FIRST name in the list and use it as the source on ' +
+        'every store_memory and update_memory call. The first pick ' +
+        'claims the name and rotates in the next ordinal variant.'
+      return withNotice({
+        content: [{ type: 'text', text: JSON.stringify({ success: true, names, notice }) }]
+      })
+    }
+  )
+
+  server.tool(
     'update_memory',
     'Update an existing memory by name',
     {
@@ -318,13 +333,6 @@ export async function createServer(manager, options = {}) {
       cr: z.boolean().optional().describe('Request compression of this memory')
     },
     async ({ name, content, tags, source, priority, u, p, exp, ttl, cr }) => {
-      if (isProtectedMemory(name)) {
-        logger.error(`[CRIT] Attempt to modify protected system memory "${name}"`)
-        return withNotice({
-          content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'This memory is managed by the server and cannot be modified' }) }],
-          isError: true
-        })
-      }
       const graph = await manager.openNodes([name])
       if (graph.entities.length === 0) {
         return withNotice({
@@ -549,13 +557,6 @@ export async function createServer(manager, options = {}) {
       source: z.string().optional().describe('Source identifier to guard against cross-source deletion')
     },
     async ({ name, source }) => {
-      if (isProtectedMemory(name)) {
-        logger.error(`[CRIT] Attempt to delete protected system memory "${name}"`)
-        return withNotice({
-          content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'This memory is managed by the server and cannot be deleted' }) }],
-          isError: true
-        })
-      }
       if (source) {
         const graph = await manager.openNodes([name])
         if (graph.entities.length === 0) {

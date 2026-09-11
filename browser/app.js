@@ -951,6 +951,68 @@ const renderAdmin = () => {
     }
   }
 
+  const agentStatus = el('div', { class: 'message error', hidden: true })
+  const poolList = el('div', { class: 'tag-list' })
+  const identityList = el('div', { class: 'user-list' })
+  const sessionList = el('div', { class: 'user-list' })
+
+  const loadAgents = async () => {
+    try {
+      const data = await api('/api/agents')
+      agentStatus.hidden = true
+      poolList.replaceChildren()
+      if (data.pool.available.length === 0) {
+        poolList.append(el('div', { class: 'empty' }, 'No available names'))
+      }
+      for (const name of data.pool.available) {
+        poolList.append(el('span', { class: 'agent-tag' }, name))
+      }
+      identityList.replaceChildren()
+      if (data.identities.length === 0) {
+        identityList.append(el('div', { class: 'empty' }, 'No identified agents yet'))
+      }
+      for (const id of data.identities) {
+        const meta = [
+          `codename ${id.name}`,
+          `${id.connections} connection${id.connections === 1 ? '' : 's'}`,
+          id.transport ? id.transport : '',
+          id.ip ? `ip ${id.ip}` : '',
+          id.firstSeen ? `first seen ${formatDate(id.firstSeen)}` : '',
+          id.lastSeen ? `last seen ${formatDate(id.lastSeen)}` : ''
+        ].filter(Boolean).join(' · ')
+        identityList.append(el('div', { class: 'card agent-row' }, [
+          el('div', {}, [
+            el('span', { class: 'agent-name' }, id.source),
+            el('span', { class: 'agent-meta' }, meta)
+          ])
+        ]))
+      }
+      sessionList.replaceChildren()
+      if (data.sessions.length === 0) {
+        sessionList.append(el('div', { class: 'empty' }, 'No sessions recorded'))
+      }
+      for (const record of data.sessions) {
+        const meta = [
+          `session ${record.uuid ? String(record.uuid).slice(0, 8) : 'unknown'}`,
+          record.source ? `identity ${record.source}` : 'not identified',
+          `${record.connections || 0} connections`,
+          record.transport ? record.transport : '',
+          record.ip ? `ip ${record.ip}` : '',
+          record.lastSeen ? `last seen ${formatDate(record.lastSeen)}` : ''
+        ].filter(Boolean).join(' · ')
+        sessionList.append(el('div', { class: 'card agent-row' }, [
+          el('div', {}, [
+            el('span', { class: 'agent-name' }, record.name),
+            el('span', { class: 'agent-meta' }, meta)
+          ])
+        ]))
+      }
+    } catch (err) {
+      agentStatus.textContent = err.message
+      agentStatus.hidden = false
+    }
+  }
+
   const topbar = el('header', { class: 'topbar' }, [
     el('span', { class: 'brand' }, 'S19y Memory'),
     el('span', { class: 'spacer' }),
@@ -976,12 +1038,23 @@ const renderAdmin = () => {
       tokenError,
       el('h2', { class: 'section-title' }, 'Info pages'),
       el('p', { class: 'hint' }, 'Markdown pages every signed-in user can read under Info.'),
-      infoList
+      infoList,
+      agentStatus,
+      el('h2', { class: 'section-title' }, 'Agent name pool'),
+      el('p', { class: 'hint' }, 'Available names for new sessions. A claim rotates in the next ordinal variant.'),
+      poolList,
+      el('h2', { class: 'section-title' }, 'Identified agents'),
+      el('p', { class: 'hint' }, 'One entry per claimed source, connection history merged across reconnects.'),
+      identityList,
+      el('h2', { class: 'section-title' }, 'Recent sessions'),
+      el('p', { class: 'hint' }, 'Every MCP connection. The codename changes per session unless X-Agent-Name is set.'),
+      sessionList
     ])
   ]))
 
   loadUsers()
   loadInfoPages()
+  loadAgents()
 }
 
 const renderInfo = () => {

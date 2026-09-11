@@ -69,7 +69,6 @@ export const startCompressor = (manager) => {
       const candidates = (graph.entities || [])
         .filter(entity =>
           entity.entityType === 'memory' &&
-          entity.name !== 'agent_names' &&
           (entity.observations || []).includes('cr: 1') &&
           !(entity.observations || []).includes('cs: 1') &&
           !(entity.observations || []).some(o => o.startsWith('compressed: '))

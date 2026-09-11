@@ -18,7 +18,8 @@ import {
   listUsers
 } from './webauthn.mjs'
 import { cookieName, cookieOptions, createSession, getSession, deleteSession } from './browser-sessions.mjs'
-import { isProtectedMemory } from './name-pool.mjs'
+import { getPoolState } from './name-pool.mjs'
+import { getAgents, getIdentities } from './agent-registry.mjs'
 import { initInfoStore, listInfoPages, readInfoPage, writeInfoPage, deleteInfoPage } from './info-store.mjs'
 import { readFile } from 'node:fs/promises'
 import { logger } from './logger.mjs'
@@ -47,16 +48,6 @@ const parseCookies = (req) => {
 
 function parseMemory(entity) {
   const observations = entity.observations || []
-  if (observations[0] === 'system: reserved') {
-    return {
-      name: entity.name,
-      content: `Available agent names (${observations.length - 1})`,
-      priority: 100,
-      tags: ['system'],
-      source: 'System',
-      system: true
-    }
-  }
   let content = ''
   let priority = 50
   let tags = []
@@ -306,6 +297,17 @@ export function createBrowserRouter(manager, options = {}) {
     res.json({ llm, server: 's19y-memory' })
   }))
 
+  router.get('/api/agent-pool', requireAuth, wrap(async (req, res) => {
+    res.json({ pool: getPoolState() })
+  }))
+
+  router.get('/api/agents', requireSuperuser, wrap(async (req, res) => {
+    const sessions = getAgents().sort((a, b) =>
+      new Date(b.lastSeen || 0) - new Date(a.lastSeen || 0)
+    )
+    res.json({ pool: getPoolState(), identities: getIdentities(), sessions })
+  }))
+
   router.get('/api/users', requireSuperuser, wrap(async (req, res) => {
     res.json({ users: await listUsers() })
   }))
@@ -366,9 +368,6 @@ export function createBrowserRouter(manager, options = {}) {
 
   router.put('/api/memories/:name', requireSuperuser, wrap(async (req, res) => {
     const { name } = req.params
-    if (isProtectedMemory(name)) {
-      return res.status(403).json({ error: 'This memory is managed by the server and cannot be modified' })
-    }
     const graph = await manager.openNodes([name])
     if (graph.entities.length === 0) {
       return res.status(404).json({ error: 'Memory not found' })
@@ -394,9 +393,6 @@ export function createBrowserRouter(manager, options = {}) {
 
   router.delete('/api/memories/:name', requireSuperuser, wrap(async (req, res) => {
     const { name } = req.params
-    if (isProtectedMemory(name)) {
-      return res.status(403).json({ error: 'This memory is managed by the server and cannot be deleted' })
-    }
     await manager.deleteEntities([name])
     logger.info(`Deleted memory ${name}`)
     res.json({ success: true })

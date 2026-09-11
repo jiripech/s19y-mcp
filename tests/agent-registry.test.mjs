@@ -52,6 +52,24 @@ describe('Agent registry', () => {
     assert.strictEqual(mod.findPreviousClaim({ uuid: 'unknown-uuid', name: 'Nobody' }), null)
   })
 
+  it('merges identity history when the same source is reused on a new session', async () => {
+    await mod.rememberIdentity('uuid-2', 'Aemilius Papinianus')
+    const record = mod.getAgent('uuid-2')
+    assert.strictEqual(record.source, 'Aemilius Papinianus')
+    assert.ok(record.firstSeen)
+    const identities = mod.getIdentities().filter(i => i.source === 'Aemilius Papinianus')
+    assert.strictEqual(identities.length, 1)
+    assert.strictEqual(identities[0].connections, 5)
+    assert.strictEqual(identities[0].ip, '172.17.0.1')
+  })
+
+  it('sorts identities by lastSeen with the most recent first', async () => {
+    const identities = mod.getIdentities()
+    for (let i = 1; i < identities.length; i++) {
+      assert.ok(new Date(identities[i - 1].lastSeen) >= new Date(identities[i].lastSeen))
+    }
+  })
+
   it('reloads the registry from disk at next startup', async () => {
     const fresh = await import(`../agent-registry.mjs?reload=${Date.now()}`)
     await fresh.initAgentRegistry()
