@@ -702,23 +702,28 @@ const renderMemories = () => {
       memory.u && memory.u !== 'Unclaimed' ? el('span', { class: 'chip' }, memory.u) : null,
       memory.p && memory.p !== 'Unclaimed' ? el('span', { class: 'chip' }, memory.p) : null
     ].filter(Boolean)
+    const idIcon = el('span', { class: 'id-badge-icon' })
+    idIcon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="12" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h8"></path></svg>'
+    const idLabel = el('span', { class: 'id-badge-label' }, memory.name)
     const idBadge = el('button', {
       class: 'badge id-badge',
       type: 'button',
-      title: `Copy ID: ${memory.name}`,
+      'data-tip': 'Click to copy memory ID',
+      title: memory.name,
+      'aria-label': `Copy memory ID ${memory.name}`,
       onclick: async (event) => {
         event.stopPropagation()
         const badge = event.currentTarget
         if (await copyText(memory.name)) {
-          badge.textContent = 'Copied'
+          idLabel.textContent = 'Copied'
           badge.classList.add('copied')
           setTimeout(() => {
-            badge.textContent = memory.name
+            idLabel.textContent = memory.name
             badge.classList.remove('copied')
           }, 1200)
         }
       }
-    }, memory.name)
+    }, [idIcon, idLabel])
     return el('article', { class: 'card memory-card' }, [
       el('div', { class: 'card-head' }, [
         el('div', { class: 'card-head-start' }, [
@@ -1005,10 +1010,10 @@ const renderInfo = () => {
           class: 'btn small',
           type: 'button',
           onclick: () => {
-            mode = mode === 'source' ? 'preview' : 'source'
+            mode = mode === 'code' ? 'preview' : 'code'
             renderView()
           }
-        }, mode === 'source' ? 'Preview' : 'Source'),
+        }, mode === 'code' ? 'Preview' : 'Code'),
         ...(isSuperuser ? [
           el('button', {
             class: 'btn small',
@@ -1023,8 +1028,8 @@ const renderInfo = () => {
         ] : [])
       ])
     ]))
-    if (mode === 'source') {
-      pageView.append(el('pre', { class: 'md-source' }, contents[selected] || ''))
+    if (mode === 'code') {
+      pageView.append(el('pre', { class: 'md-code' }, contents[selected] || ''))
     } else {
       pageView.append(renderMarkdown(contents[selected] || ''))
     }
