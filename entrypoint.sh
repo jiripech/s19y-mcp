@@ -317,36 +317,60 @@ if check_api_key; then
   # grace period expires and the container is SIGKILLed (exit 137),
   # which the NAS/portal reports as "stopped unexpectedly".
   STOPPING=0
+  LAST_SIGNAL=""
   # shellcheck disable=SC2329
   stop_all() {
     if [ "$STOPPING" = "1" ]; then
       return 0
     fi
     STOPPING=1
-    echo "[INFO] Stopping: draining nginx, llama-server and the MCP server."
-    nginx -s quit 2>/dev/null || true
+    if nginx -s quit 2>/dev/null; then
+      echo "[DEBUG] PID 1 received ${LAST_SIGNAL}: nginx -s quit accepted."
+    else
+      echo "[WARN] PID 1 received ${LAST_SIGNAL}: nginx -s quit failed or nginx already stopped."
+    fi
     if [ -f "${DATA_DIR}/llama.pid" ]; then
-      kill -TERM "$(cat "${DATA_DIR}/llama.pid")" 2>/dev/null || true
+      LLAMA_PID=$(cat "${DATA_DIR}/llama.pid")
+      if kill -TERM "$LLAMA_PID" 2>/dev/null; then
+        echo "[DEBUG] Sent SIGTERM to llama-server (pid ${LLAMA_PID})."
+      else
+        echo "[WARN] llama-server pid ${LLAMA_PID} already gone."
+      fi
     fi
     if [ -n "$NODE_PID" ]; then
-      kill -TERM "$NODE_PID" 2>/dev/null || true
+      if kill -TERM "$NODE_PID" 2>/dev/null; then
+        echo "[DEBUG] Sent SIGTERM to the MCP server (pid ${NODE_PID})."
+      else
+        echo "[WARN] MCP server pid ${NODE_PID} already gone."
+      fi
     fi
   }
-  trap stop_all INT TERM
+  trap 'LAST_SIGNAL=INT; stop_all' INT
+  trap 'LAST_SIGNAL=TERM; stop_all' TERM
 
   node server.mjs &
   NODE_PID=$!
+  echo "[DEBUG] MCP server started as pid ${NODE_PID}."
 
-  wait "$NODE_PID"
-  STATUS=$?
-  if [ "$STOPPING" = "1" ] && [ -n "$NODE_PID" ] && kill -0 "$NODE_PID" 2>/dev/null; then
+  # Wait for the MCP server until it is really gone. When a trapped
+  # signal arrives during `wait`, dash/busybox interrupt the wait and
+  # return 128+N immediately even though the child is still draining;
+  # looping on `wait` until kill -0 fails hands the child's real exit
+  # status back, so a graceful stop always exits 0 and a manual or
+  # unexpected one never leaks a signal-derived status (143/130).
+  STATUS=0
+  while kill -0 "$NODE_PID" 2>/dev/null; do
     wait "$NODE_PID"
     STATUS=$?
+  done
+  if [ "$STOPPING" = "1" ]; then
+    echo "[DEBUG] MCP server exited with status ${STATUS} on shutdown."
   fi
   rm -f "${DATA_DIR}/llama.pid"
   if [ "$STOPPING" = "1" ]; then
     sleep 1
   fi
+  echo "[INFO] Container exiting with status ${STATUS}."
   exit "$STATUS"
 fi
 

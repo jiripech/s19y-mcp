@@ -33,6 +33,8 @@ const ADMIN_USER = process.env.ADMIN_USER || null
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null
 const DATA_DIR = process.env.DATA_DIR || '/app/data'
 
+logger.debug(`LOG_LEVEL=${process.env.LOG_LEVEL || 'info'} DATA_DIR=${DATA_DIR} ADMIN_USER=${ADMIN_USER || '<none>'} ADMIN_PASSWORD=${ADMIN_PASSWORD ? '<set>' : '<none>'}`)
+
 app.set('trust proxy', true)
 
 app.use(express.json())
@@ -251,10 +253,23 @@ const server = app.listen(Number(APP_PORT), APP_HOST, () => {
 
 const shutdown = (signal) => {
   logger.info(`Received ${signal}; closing HTTP server and exiting cleanly.`)
+  try {
+    server.getConnections((err, count) => {
+      logger.debug(`Open connections on ${signal}: ${err ? `unknown (${err.message})` : count}`)
+    })
+  } catch (err) {
+    logger.debug(`Could not count connections on ${signal}: ${err.message}`)
+  }
   server.closeAllConnections()
-  server.close(() => process.exit(0))
+  server.close(() => {
+    logger.debug('HTTP server fully closed; exiting.')
+    process.exit(0)
+  })
   // Guard: never let a shutdown outlive the docker stop grace period.
-  setTimeout(() => process.exit(0), 3000).unref()
+  setTimeout(() => {
+    logger.debug('Shutdown guard expired; forcing exit.')
+    process.exit(0)
+  }, 3000).unref()
 }
 process.on('SIGTERM', () => shutdown('SIGTERM'))
 process.on('SIGINT', () => shutdown('SIGINT'))

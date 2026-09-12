@@ -145,6 +145,7 @@ tags mutable for `latest` to track releases.
 | `BROWSER_SCHEME`          | WebAuthn scheme            | http                |
 | `ADMIN_USER`              | Password login user        | none                |
 | `ADMIN_PASSWORD`          | Static admin password      | none (OTP)          |
+| `LOG_LEVEL`               | Log verbosity (debug/info) | info                |
 | `COMPRESSION_ENDPOINT`    | Compression endpoint       | bundled             |
 | `COMPRESSION_MODEL`       | Compression model          | qwen2.5-3b-instruct |
 | `COMPRESSION_INTERVAL_MS` | Tick interval (ms)         | 60000               |

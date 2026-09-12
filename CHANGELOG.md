@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog][kac], and this project adheres to
 [Semantic Versioning][semver].
 
+## [Unreleased]
+
+### Fixed (0.18.4)
+
+- The PID-1 shutdown now reports the MCP server's *real* exit status
+  instead of the `128+signal` value a trapped signal can leave behind
+  when it interrupts the shell's `wait`. The entrypoint loops on
+  `wait` / `kill -0` until the server is truly gone, so a clean
+  `docker stop` always signs off with exit status 0 even if the server
+  finishes draining very quickly.
+
+### Added (0.18.4)
+
+- Shutdown-path instrumentation: the entrypoint logs every stage -
+  the received signal, the nginx quit result, the SIGTERM sent to
+  llama-server and to the MCP server - and prints a final
+  `Container exiting with status N` marker. `server.mjs` logs the open
+  connection count on shutdown and whether the close callback or the
+  3s guard fired. Combined with the existing per-request
+  `logger.debug` lines (enable with `LOG_LEVEL=debug`), a
+  "stopped unexpectedly" report can be traced to the exact exit status
+  and the last requests that were served.
+
 ## [0.18.3] - 2026-09-12
 
 ### Fixed (0.18.3)
