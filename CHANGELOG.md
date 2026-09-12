@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog][kac], and this project adheres to
 [Semantic Versioning][semver].
 
-## [Unreleased]
+## [0.18.3] - 2026-09-12
 
 ### Fixed (0.18.3)
 
