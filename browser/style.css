@@ -324,6 +324,82 @@ select.input option {
   margin-bottom: 16px;
 }
 
+.admin-layout {
+  display: grid;
+  grid-template-columns: 230px 1fr;
+  gap: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+  align-items: start;
+}
+
+.admin-nav {
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  box-shadow: var(--glass-highlight), var(--glass-shadow);
+}
+
+.admin-nav-title {
+  padding: 6px 12px 10px;
+  font-size: var(--fs-tiny);
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.admin-nav-item {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: var(--fs-body);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.admin-nav-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.admin-nav-item.active {
+  background: rgba(124, 154, 255, 0.18);
+  border-color: rgba(140, 160, 255, 0.35);
+  color: var(--text);
+}
+
+.admin-content {
+  min-width: 0;
+}
+
+.admin-section .section-title {
+  margin-top: 4px;
+}
+
+.token-value {
+  margin: 10px 0 16px;
+}
+
+.token-value .id-badge {
+  max-width: 100%;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -729,6 +805,10 @@ select.input option {
   margin-top: 12px;
 }
 
+.token-row .input {
+  flex: 1;
+}
+
 .info-layout {
   display: grid;
   grid-template-columns: 300px 1fr;
@@ -959,5 +1039,26 @@ select.input option {
 
   .token-row {
     flex-direction: column;
+  }
+
+  .admin-layout {
+    grid-template-columns: 1fr;
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .admin-nav {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .admin-nav-title {
+    display: none;
+  }
+
+  .admin-nav-item {
+    white-space: nowrap;
+    text-align: center;
   }
 }

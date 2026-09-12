@@ -163,6 +163,7 @@ write_nginx_config() {
   fi
   cat >"$NGINX_CONFIG" <<EOF
 worker_processes 1;
+pid /var/run/nginx.pid;
 events {
   worker_connections 1024;
 }
@@ -273,6 +274,7 @@ start_llm() {
     stdbuf -oL -eL /usr/local/lib/llama/llama-server -m "$MODEL_PATH" -c "$LLM_CONTEXT" -t "$LLM_THREADS" \
     --host 127.0.0.1 --port "$LLM_PORT" >"$DATA_DIR/llama-server.log" 2>&1 &
   LLAMA_PID=$!
+  echo "$LLAMA_PID" > "${DATA_DIR}/llama.pid"
 
   i=0
   while [ "$i" -lt "$LLM_TIMEOUT" ]; do
@@ -308,7 +310,44 @@ if check_api_key; then
   rotate_and_alert
   start_nginx
   start_llm &
-  exec node server.mjs
+
+  # Stay as PID 1 so `docker stop` / Ctrl-C arrives here: forward the
+  # signal to nginx, llama-server and the MCP server, then drain and
+  # exit 0. Without a PID-1 trap, node ignores SIGTERM here, the stop
+  # grace period expires and the container is SIGKILLed (exit 137),
+  # which the NAS/portal reports as "stopped unexpectedly".
+  STOPPING=0
+  # shellcheck disable=SC2329
+  stop_all() {
+    if [ "$STOPPING" = "1" ]; then
+      return 0
+    fi
+    STOPPING=1
+    echo "[INFO] Stopping: draining nginx, llama-server and the MCP server."
+    nginx -s quit 2>/dev/null || true
+    if [ -f "${DATA_DIR}/llama.pid" ]; then
+      kill -TERM "$(cat "${DATA_DIR}/llama.pid")" 2>/dev/null || true
+    fi
+    if [ -n "$NODE_PID" ]; then
+      kill -TERM "$NODE_PID" 2>/dev/null || true
+    fi
+  }
+  trap stop_all INT TERM
+
+  node server.mjs &
+  NODE_PID=$!
+
+  wait "$NODE_PID"
+  STATUS=$?
+  if [ "$STOPPING" = "1" ] && [ -n "$NODE_PID" ] && kill -0 "$NODE_PID" 2>/dev/null; then
+    wait "$NODE_PID"
+    STATUS=$?
+  fi
+  rm -f "${DATA_DIR}/llama.pid"
+  if [ "$STOPPING" = "1" ]; then
+    sleep 1
+  fi
+  exit "$STATUS"
 fi
 
 echo "[FATAL] Unexpected API_KEY check failure."

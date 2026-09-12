@@ -196,6 +196,32 @@ const sessionIdBadge = (uuid) => {
   return badge
 }
 
+const copyableBadge = (text, { title, tip, className = '' } = {}) => {
+  const icon = el('span', { class: 'id-badge-icon' })
+  icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>'
+  const label = el('span', { class: 'id-badge-label' }, text)
+  const badge = el('button', {
+    class: `badge id-badge ${className}`.trim(),
+    type: 'button',
+    'data-tip': tip || 'Click to copy',
+    title: title || text,
+    'aria-label': `Copy ${title || text}`,
+    onclick: async (event) => {
+      event.stopPropagation()
+      const target = event.currentTarget
+      if (await copyText(text)) {
+        label.textContent = 'Copied'
+        target.classList.add('copied')
+        setTimeout(() => {
+          label.textContent = text
+          target.classList.remove('copied')
+        }, 1200)
+      }
+    }
+  }, [icon, label])
+  return badge
+}
+
 const copyText = async (text) => {
   try {
     await navigator.clipboard.writeText(text)
@@ -934,11 +960,30 @@ const renderAdmin = () => {
       tokenOk.textContent = 'Registration token updated'
       tokenOk.hidden = false
       tokenInput.value = ''
+      loadToken()
     } catch (err) {
       tokenError.textContent = err.message
       tokenError.hidden = false
     }
   })
+
+  let tokenManagedByEnv = false
+  const tokenValue = el('div', { class: 'token-value' })
+  const tokenManaged = el('div', { class: 'message warn', hidden: true })
+
+  const loadToken = async () => {
+    try {
+      const data = await api('/api/registration-token')
+      tokenManagedByEnv = data.managedByEnv
+      tokenManaged.textContent = 'Managed by the REGISTRATION_TOKEN environment variable; changes are rejected here.'
+      tokenManaged.hidden = !data.managedByEnv
+      tokenValue.replaceChildren()
+      tokenValue.append(copyableBadge(data.token, { title: 'Registration token', tip: 'Click to copy the registration token', className: 'token-id' }))
+      tokenInput.disabled = data.managedByEnv
+    } catch (err) {
+      tokenValue.replaceChildren(el('div', { class: 'message error' }, err.message))
+    }
+  }
 
   const infoList = el('div', { class: 'user-list' })
 
@@ -1059,36 +1104,92 @@ const renderAdmin = () => {
     el('button', { class: 'btn small', type: 'button', onclick: logout }, 'Logout')
   ])
 
+  const sectionUsers = el('section', { class: 'admin-section' }, [
+    el('h2', { class: 'section-title' }, 'Users'),
+    el('p', { class: 'hint' }, 'Browser accounts with passkey or password login. Superusers manage everything.'),
+    userList
+  ])
+  const sectionToken = el('section', { class: 'admin-section' }, [
+    el('h2', { class: 'section-title' }, 'Registration token'),
+    el('p', { class: 'hint' }, 'New users need this token to register, unless the first account is being created.'),
+    tokenManaged,
+    tokenValue,
+    tokenForm,
+    tokenOk,
+    tokenError
+  ])
+  const sectionInfo = el('section', { class: 'admin-section' }, [
+    el('h2', { class: 'section-title' }, 'Info pages'),
+    el('p', { class: 'hint' }, 'Markdown pages every signed-in user can read under Info.'),
+    infoList
+  ])
+  const sectionPool = el('section', { class: 'admin-section' }, [
+    el('h2', { class: 'section-title' }, 'Agent name pool'),
+    el('p', { class: 'hint' }, 'Available names for new sessions. A claim rotates in the next ordinal variant.'),
+    poolList
+  ])
+  const sectionAgents = el('section', { class: 'admin-section' }, [
+    el('h2', { class: 'section-title' }, 'Identified agents'),
+    el('p', { class: 'hint' }, 'One entry per claimed source, connection history merged across reconnects.'),
+    identityList
+  ])
+  const sectionSessions = el('section', { class: 'admin-section' }, [
+    el('h2', { class: 'section-title' }, 'Recent sessions'),
+    el('p', { class: 'hint' }, 'Every MCP connection. The codename changes per session unless X-Agent-Name is set.'),
+    sessionList
+  ])
+
+  const sections = {
+    users: sectionUsers,
+    token: sectionToken,
+    info: sectionInfo,
+    pool: sectionPool,
+    agents: sectionAgents,
+    sessions: sectionSessions
+  }
+  const navButtons = new Map()
+  const navItems = [
+    ['users', 'Users'],
+    ['token', 'Registration token'],
+    ['info', 'Info pages'],
+    ['pool', 'Agent name pool'],
+    ['agents', 'Identified agents'],
+    ['sessions', 'Recent sessions']
+  ]
+  const nav = el('nav', { class: 'admin-nav', 'aria-label': 'Admin sections' }, [
+    el('div', { class: 'admin-nav-title' }, 'Admin')
+  ])
+  for (const [id, label] of navItems) {
+    const btn = el('button', { class: 'admin-nav-item', type: 'button', onclick: () => select(id) }, label)
+    navButtons.set(id, btn)
+    nav.append(btn)
+  }
+  const select = (id) => {
+    for (const [sid, section] of Object.entries(sections)) {
+      section.hidden = sid !== id
+    }
+    for (const [sid, btn] of navButtons) {
+      btn.classList.toggle('active', sid === id)
+    }
+  }
+
   render(el('div', { class: 'page-shell' }, [
     topbar,
-    el('main', { class: 'page' }, [
-      status,
-      el('h2', { class: 'section-title' }, 'Users'),
-      userList,
-      el('h2', { class: 'section-title' }, 'Registration token'),
-      el('p', { class: 'hint' }, 'New users need this token to register, unless the first account is being created.'),
-      tokenForm,
-      tokenOk,
-      tokenError,
-      el('h2', { class: 'section-title' }, 'Info pages'),
-      el('p', { class: 'hint' }, 'Markdown pages every signed-in user can read under Info.'),
-      infoList,
-      agentStatus,
-      el('h2', { class: 'section-title' }, 'Agent name pool'),
-      el('p', { class: 'hint' }, 'Available names for new sessions. A claim rotates in the next ordinal variant.'),
-      poolList,
-      el('h2', { class: 'section-title' }, 'Identified agents'),
-      el('p', { class: 'hint' }, 'One entry per claimed source, connection history merged across reconnects.'),
-      identityList,
-      el('h2', { class: 'section-title' }, 'Recent sessions'),
-      el('p', { class: 'hint' }, 'Every MCP connection. The codename changes per session unless X-Agent-Name is set.'),
-      sessionList
+    el('div', { class: 'admin-layout' }, [
+      nav,
+      el('main', { class: 'admin-content' }, [
+        status,
+        agentStatus,
+        ...Object.values(sections)
+      ])
     ])
   ]))
 
+  select('users')
   loadUsers()
   loadInfoPages()
   loadAgents()
+  loadToken()
 }
 
 const renderInfo = () => {

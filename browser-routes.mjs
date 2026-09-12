@@ -331,7 +331,7 @@ export function createBrowserRouter(manager, options = {}) {
 
   router.put('/api/registration-token', requireSuperuser, wrap(async (req, res) => {
     const { token } = req.body
-    if (typeof token !== 'string' || token.length === 0) {
+    if (typeof token !== 'string' || token.trim().length === 0) {
       return res.status(400).json({ error: 'Token must be a non-empty string' })
     }
     if (isRegistrationTokenManagedByEnv()) {
@@ -339,7 +339,12 @@ export function createBrowserRouter(manager, options = {}) {
     }
     await setRegistrationToken(token)
     logger.info(`Registration token updated by ${req.session.userName}`)
-    res.json({ success: true })
+    res.json({ success: true, token })
+  }))
+
+  router.get('/api/registration-token', requireSuperuser, wrap(async (req, res) => {
+    const token = await getRegistrationToken()
+    res.json({ token, managedByEnv: isRegistrationTokenManagedByEnv() })
   }))
 
   router.get('/api/memories', requireAuth, wrap(async (req, res) => {
