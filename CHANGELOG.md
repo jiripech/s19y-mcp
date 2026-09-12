@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog][kac], and this project adheres to
 [Semantic Versioning][semver].
 
+## [Unreleased]
+
+### Fixed (Unreleased)
+
+- Passkey verification failed server-side even after the RP ID fix:
+  the bundled nginx forwarded the host with `proxy_set_header Host
+  $host`, and nginx's `$host` variable strips the port, so the server
+  derived origin `https://host` while the browser signs
+  `https://host:port`. nginx now forwards `$http_host` (the raw
+  `Host` header including the port) plus `X-Forwarded-Host`, and the
+  WebAuthn origin prefers `X-Forwarded-Host` over `Host`, so the
+  expected origin matches the browser exactly.
+
+### Added (Unreleased)
+
+- The registration and login verification failure logs now include
+  the underlying error message instead of a bare
+  "verification failed" line, making future WebAuthn mismatches
+  diagnosable from `docker logs` alone.
+
 ## [0.18.5] - 2026-09-12
 
 ### Fixed (0.18.5)

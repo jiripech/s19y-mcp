@@ -192,8 +192,8 @@ export function createBrowserRouter(manager, options = {}) {
     let result
     try {
       result = await verifyRegistration(user.id, { challenge: pending.challenge, response }, rpContextFor(req))
-    } catch {
-      logger.warn(`Passkey registration failed for "${user.name}" from ${req.ip}`)
+    } catch (err) {
+      logger.warn(`Passkey registration failed for "${user.name}" from ${req.ip}: ${err?.message || err}`)
       if (user.webauthn.length === 0) {
         await deleteUser(user.id)
       }
@@ -255,8 +255,8 @@ export function createBrowserRouter(manager, options = {}) {
     let result
     try {
       result = await verifyLogin(userId, { challenge: pending.challenge, response }, rpContextFor(req))
-    } catch {
-      logger.warn(`Passkey login failed for user ${userId} from ${req.ip}`)
+    } catch (err) {
+      logger.warn(`Passkey login failed for user ${userId} from ${req.ip}: ${err?.message || err}`)
       return res.status(400).json({ error: 'Login verification failed' })
     }
     if (!result.verified) {

@@ -298,6 +298,26 @@ describe('WebAuthn RP context', () => {
     }
   })
 
+  it('prefers X-Forwarded-Host (with port) over the Host header', async () => {
+    const { rpContextFor } = await import('../webauthn.mjs')
+    const saved = envBackup()
+    delete process.env.BROWSER_HOSTNAME
+    delete process.env.BROWSER_SCHEME
+    try {
+      const rp = rpContextFor({
+        headers: {
+          host: 'hq.lan',
+          'x-forwarded-host': 'hq.lan:12300'
+        },
+        secure: true
+      })
+      assert.strictEqual(rp.rpId, 'hq.lan')
+      assert.strictEqual(rp.origin, 'https://hq.lan:12300')
+    } finally {
+      envRestore(saved)
+    }
+  })
+
   it('falls back to os.hostname and PORT when no Host header is present', async () => {
     const { rpContextFor } = await import('../webauthn.mjs')
     const saved = envBackup()

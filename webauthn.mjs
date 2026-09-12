@@ -15,7 +15,8 @@ let effectiveDataDir = dataDir
 
 export const rpContextFor = (req = {}) => {
   const headers = req.headers || {}
-  const hostHeader = headers.host || ''
+  const forwardedHost = (headers['x-forwarded-host'] || '').split(',')[0].trim()
+  const hostHeader = forwardedHost || headers.host || ''
   const hostOnly = hostHeader.replace(/:\d+$/, '') || os.hostname()
   const scheme = process.env.BROWSER_SCHEME || (req.secure ? 'https' : (req.protocol || 'http'))
   const originHost = hostHeader || `${hostOnly}:${process.env.PORT || '3000'}`
