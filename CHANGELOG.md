@@ -5,9 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog][kac], and this project adheres to
 [Semantic Versioning][semver].
 
-## [Unreleased]
+## [0.18.5] - 2026-09-12
 
-### Fixed (Unreleased)
+### Fixed (0.18.5)
 
 - WebAuthn registration no longer fails with "the relying party ID is
   not a registrable domain suffix of, nor equal to the current domain"
@@ -20,7 +20,7 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
   for setups where the access host changes between registration and
   login (the RP ID must stay stable for a passkey to verify).
 
-### Added (Unreleased)
+### Added (0.18.5)
 
 - A connectivity indicator in the browser UI: a small fixed dot turns
   green while a periodic status poll reaches the server and red (with
