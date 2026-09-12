@@ -15,7 +15,8 @@ import {
   verifyRegistration,
   generateLoginOptions,
   verifyLogin,
-  listUsers
+  listUsers,
+  rpContextFor
 } from './webauthn.mjs'
 import { cookieName, cookieOptions, createSession, getSession, deleteSession } from './browser-sessions.mjs'
 import { getPoolState } from './name-pool.mjs'
@@ -160,7 +161,9 @@ export function createBrowserRouter(manager, options = {}) {
       logger.warn(`Registration rejected for "${name}" from ${req.ip}: name already taken`)
       return res.status(409).json({ error: 'User name already taken' })
     }
-    const options = await generateRegistrationOptions(name)
+    const rp = rpContextFor(req)
+    logger.debug(`Registration options for "${name}": rpID=${rp.rpId} origin=${rp.origin}`)
+    const options = await generateRegistrationOptions(name, rp)
     const challengeId = randomUUID()
     pendingChallenges.set(challengeId, {
       challenge: options.challenge,
@@ -188,7 +191,7 @@ export function createBrowserRouter(manager, options = {}) {
     }
     let result
     try {
-      result = await verifyRegistration(user.id, { challenge: pending.challenge, response })
+      result = await verifyRegistration(user.id, { challenge: pending.challenge, response }, rpContextFor(req))
     } catch {
       logger.warn(`Passkey registration failed for "${user.name}" from ${req.ip}`)
       if (user.webauthn.length === 0) {
@@ -236,7 +239,9 @@ export function createBrowserRouter(manager, options = {}) {
     if (!user.webauthn || user.webauthn.length === 0) {
       return res.status(400).json({ error: 'No passkey registered for this user' })
     }
-    const options = await generateLoginOptions(name)
+    const rp = rpContextFor(req)
+    logger.debug(`Login options for "${name}": rpID=${rp.rpId} origin=${rp.origin}`)
+    const options = await generateLoginOptions(name, rp)
     pendingChallenges.set(user.id, { challenge: options.challenge, createdAt: Date.now() })
     res.json({ options, userId: user.id })
   }))
@@ -249,7 +254,7 @@ export function createBrowserRouter(manager, options = {}) {
     }
     let result
     try {
-      result = await verifyLogin(userId, { challenge: pending.challenge, response })
+      result = await verifyLogin(userId, { challenge: pending.challenge, response }, rpContextFor(req))
     } catch {
       logger.warn(`Passkey login failed for user ${userId} from ${req.ip}`)
       return res.status(400).json({ error: 'Login verification failed' })

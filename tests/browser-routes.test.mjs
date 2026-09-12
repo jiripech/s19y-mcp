@@ -188,4 +188,129 @@ describe('Browser router module', () => {
       server.close()
     }
   })
+
+  it('advertises the request Host as the WebAuthn relying party ID', async () => {
+    const http = (await import('node:http')).default
+    const express = (await import('express')).default
+    const { createBrowserRouter } = await import('../browser-routes.mjs')
+
+    const saved = process.env.BROWSER_HOSTNAME
+    delete process.env.BROWSER_HOSTNAME
+    try {
+      const router = createBrowserRouter({})
+      const app = express()
+      app.set('trust proxy', true)
+      app.use(express.json())
+      app.use(router)
+      const server = app.listen(0)
+      const port = server.address().port
+      const json = JSON.stringify({ name: 'rp-probe' })
+      const body = await new Promise((resolve, reject) => {
+        const req = http.request({
+          host: '127.0.0.1',
+          port,
+          path: '/api/register/begin',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(json),
+            Host: 'hq.lan:12300',
+            'X-Forwarded-Proto': 'https'
+          }
+        }, (res) => {
+          let data = ''
+          res.on('data', (chunk) => { data += chunk })
+          res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(data) }))
+        })
+        req.on('error', reject)
+        req.write(json)
+        req.end()
+      })
+      assert.strictEqual(body.status, 200)
+      assert.strictEqual(body.body.options.rp.id, 'hq.lan')
+      server.close()
+    } finally {
+      if (saved === undefined) {
+        delete process.env.BROWSER_HOSTNAME
+      } else {
+        process.env.BROWSER_HOSTNAME = saved
+      }
+    }
+  })
+})
+
+describe('WebAuthn RP context', () => {
+  const envBackup = () => ({
+    host: process.env.BROWSER_HOSTNAME,
+    scheme: process.env.BROWSER_SCHEME,
+    port: process.env.PORT
+  })
+
+  const envRestore = (saved) => {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) {
+        delete process.env[key]
+      } else {
+        process.env[key] = value
+      }
+    }
+  }
+
+  it('derives rpId and origin from the request Host and forwarded scheme', async () => {
+    const { rpContextFor } = await import('../webauthn.mjs')
+    const saved = envBackup()
+    delete process.env.BROWSER_HOSTNAME
+    delete process.env.BROWSER_SCHEME
+    try {
+      const rp = rpContextFor({ headers: { host: 'hq.lan:12300' }, secure: true })
+      assert.strictEqual(rp.rpId, 'hq.lan')
+      assert.strictEqual(rp.origin, 'https://hq.lan:12300')
+    } finally {
+      envRestore(saved)
+    }
+  })
+
+  it('falls back to http scheme when the request is plain', async () => {
+    const { rpContextFor } = await import('../webauthn.mjs')
+    const saved = envBackup()
+    delete process.env.BROWSER_HOSTNAME
+    delete process.env.BROWSER_SCHEME
+    try {
+      const rp = rpContextFor({ headers: { host: 'nas.home' } })
+      assert.strictEqual(rp.rpId, 'nas.home')
+      assert.strictEqual(rp.origin, 'http://nas.home')
+    } finally {
+      envRestore(saved)
+    }
+  })
+
+  it('honours BROWSER_HOSTNAME and BROWSER_SCHEME overrides', async () => {
+    const { rpContextFor } = await import('../webauthn.mjs')
+    const saved = envBackup()
+    process.env.BROWSER_HOSTNAME = 'memory.example.com'
+    process.env.BROWSER_SCHEME = 'https'
+    try {
+      const rp = rpContextFor({ headers: { host: 'hq.lan:12300' } })
+      assert.strictEqual(rp.rpId, 'memory.example.com')
+      assert.strictEqual(rp.origin, 'https://hq.lan:12300')
+    } finally {
+      envRestore(saved)
+    }
+  })
+
+  it('falls back to os.hostname and PORT when no Host header is present', async () => {
+    const { rpContextFor } = await import('../webauthn.mjs')
+    const saved = envBackup()
+    delete process.env.BROWSER_HOSTNAME
+    delete process.env.BROWSER_SCHEME
+    process.env.PORT = '4242'
+    try {
+      const { hostname } = await import('node:os')
+      const rp = rpContextFor()
+      assert.strictEqual(rp.rpId, hostname())
+      assert.strictEqual(rp.origin, `http://${hostname()}:4242`)
+    } finally {
+      envRestore(saved)
+    }
+  })
 })

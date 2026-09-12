@@ -13,10 +13,23 @@ import { logger } from './logger.mjs'
 const dataDir = process.env.DATA_DIR || '/app/data'
 let effectiveDataDir = dataDir
 
-const rpID = process.env.BROWSER_HOSTNAME || os.hostname()
-const rpScheme = process.env.BROWSER_SCHEME || 'http'
-const port = process.env.PORT || 3000
-const expectedOrigin = `${rpScheme}://${rpID}:${port}`
+export const rpContextFor = (req = {}) => {
+  const headers = req.headers || {}
+  const hostHeader = headers.host || ''
+  const hostOnly = hostHeader.replace(/:\d+$/, '') || os.hostname()
+  const scheme = process.env.BROWSER_SCHEME || (req.secure ? 'https' : (req.protocol || 'http'))
+  const originHost = hostHeader || `${hostOnly}:${process.env.PORT || '3000'}`
+  const rpId = process.env.BROWSER_HOSTNAME || hostOnly
+  return { rpId, scheme, origin: `${scheme}://${originHost}` }
+}
+
+export const describeRpDefaults = () => {
+  const rpId = process.env.BROWSER_HOSTNAME || '<derived from request Host>'
+  const scheme = process.env.BROWSER_SCHEME || '<derived from X-Forwarded-Proto>'
+  const port = process.env.PORT || '3000'
+  const auto = process.env.BROWSER_HOSTNAME ? '' : ' (auto: set BROWSER_HOSTNAME for a stable RP ID)'
+  return `rpID=${rpId} scheme=${scheme} external port=${port}${auto}`
+}
 
 const toBase64 = (buf) => Buffer.from(buf).toString('base64url')
 const fromBase64 = (str) => new Uint8Array(Buffer.from(str, 'base64url'))
@@ -102,7 +115,8 @@ export const deleteUser = async (userId) => {
   await saveUsers(data)
 }
 
-export const generateRegistrationOptions = async (name) => {
+export const generateRegistrationOptions = async (name, rp) => {
+  const rpCtx = rp || rpContextFor()
   const user = await findUserByName(name)
 
   const excludeCredentials = user
@@ -114,7 +128,7 @@ export const generateRegistrationOptions = async (name) => {
 
   return serverGenRegOpts({
     rpName: 'S19y Memory',
-    rpID,
+    rpID: rpCtx.rpId,
     userName: name,
     attestationType: 'none',
     excludeCredentials,
@@ -125,7 +139,8 @@ export const generateRegistrationOptions = async (name) => {
   })
 }
 
-export const verifyRegistration = async (userId, attestationResponse) => {
+export const verifyRegistration = async (userId, attestationResponse, rp) => {
+  const rpCtx = rp || rpContextFor()
   const data = await loadUsers()
   const user = data.users.find(u => u.id === userId)
   if (!user) throw new Error('User not found')
@@ -135,8 +150,8 @@ export const verifyRegistration = async (userId, attestationResponse) => {
   const result = await serverVerifyRegResp({
     response,
     expectedChallenge: challenge,
-    expectedOrigin,
-    expectedRPID: rpID
+    expectedOrigin: rpCtx.origin,
+    expectedRPID: rpCtx.rpId
   })
 
   if (result.verified && result.registrationInfo) {
@@ -152,7 +167,8 @@ export const verifyRegistration = async (userId, attestationResponse) => {
   return result
 }
 
-export const generateLoginOptions = async (name) => {
+export const generateLoginOptions = async (name, rp) => {
+  const rpCtx = rp || rpContextFor()
   const user = await findUserByName(name)
   if (!user) throw new Error('User not found')
 
@@ -162,13 +178,14 @@ export const generateLoginOptions = async (name) => {
   }))
 
   return serverGenAuthOpts({
-    rpID,
+    rpID: rpCtx.rpId,
     allowCredentials,
     userVerification: 'preferred'
   })
 }
 
-export const verifyLogin = async (userId, assertionResponse) => {
+export const verifyLogin = async (userId, assertionResponse, rp) => {
+  const rpCtx = rp || rpContextFor()
   const data = await loadUsers()
   const user = data.users.find(u => u.id === userId)
   if (!user) throw new Error('User not found')
@@ -187,8 +204,8 @@ export const verifyLogin = async (userId, assertionResponse) => {
   const result = await serverVerifyAuthResp({
     response,
     expectedChallenge: challenge,
-    expectedOrigin,
-    expectedRPID: rpID,
+    expectedOrigin: rpCtx.origin,
+    expectedRPID: rpCtx.rpId,
     credential
   })
 

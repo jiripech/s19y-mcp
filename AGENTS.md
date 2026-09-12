@@ -141,8 +141,8 @@ tags mutable for `latest` to track releases.
 | `APP_HOST`                | Internal app host          | 127.0.0.1           |
 | `DATA_DIR`                | Data storage directory     | /app/data           |
 | `REGISTRATION_TOKEN`      | Browser registration token | none                |
-| `BROWSER_HOSTNAME`        | WebAuthn RP ID             | hostname            |
-| `BROWSER_SCHEME`          | WebAuthn scheme            | http                |
+| `BROWSER_HOSTNAME`        | WebAuthn RP ID override    | request Host        |
+| `BROWSER_SCHEME`          | WebAuthn scheme override   | forwarded proto     |
 | `ADMIN_USER`              | Password login user        | none                |
 | `ADMIN_PASSWORD`          | Static admin password      | none (OTP)          |
 | `LOG_LEVEL`               | Log verbosity (debug/info) | info                |
@@ -186,9 +186,15 @@ listens on the public `PORT` and proxies to the Node app on
 `SSL_KEY_FILE` (unencrypted PEM) are present, nginx serves HTTPS on
 `PORT`; otherwise it serves plain HTTP. A valid TLS setup requires
 `BROWSER_SCHEME=https` and `BROWSER_HOSTNAME` matching the public
-hostname for WebAuthn. nginx runs with streaming proxy settings
-(`proxy_buffering off`, long timeouts) so MCP SSE/Streamable HTTP
-connections are not buffered.
+hostname for WebAuthn. By default the WebAuthn relying party ID and
+origin are derived from each request's `Host` and
+`X-Forwarded-Proto` headers (nginx already forwards both), so
+passkeys work regardless of the hostname or port used to reach the
+app; set `BROWSER_HOSTNAME` and `BROWSER_SCHEME` when the access
+host may change between registration and login (the RP ID must stay
+stable for a passkey to verify). nginx runs with streaming proxy
+settings (`proxy_buffering off`, long timeouts) so MCP SSE/Streamable
+HTTP connections are not buffered.
 
 Log fencing: at startup, `llama-server.log` and `nginx-access.log`
 (respecting `NGINX_DEBUG`) are checked against `LOG_MAX_SIZE` (bare

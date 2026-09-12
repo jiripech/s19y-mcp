@@ -11,6 +11,7 @@ import { initInfoStore } from './info-store.mjs'
 import { createInfoRouter } from './info-routes.mjs'
 import { initInstructions } from './instructions.mjs'
 import { createBrowserRouter, generateAdminPassword } from './browser-routes.mjs'
+import { describeRpDefaults } from './webauthn.mjs'
 import { logger } from './logger.mjs'
 import { initAgentRegistry, rememberConnection } from './agent-registry.mjs'
 import { names } from './names.mjs'
@@ -34,6 +35,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null
 const DATA_DIR = process.env.DATA_DIR || '/app/data'
 
 logger.debug(`LOG_LEVEL=${process.env.LOG_LEVEL || 'info'} DATA_DIR=${DATA_DIR} ADMIN_USER=${ADMIN_USER || '<none>'} ADMIN_PASSWORD=${ADMIN_PASSWORD ? '<set>' : '<none>'}`)
+  logger.debug(`WebAuthn ${describeRpDefaults()}`)
 
 app.set('trust proxy', true)
 

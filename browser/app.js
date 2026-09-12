@@ -1375,7 +1375,31 @@ const loadLlmStatus = async () => {
   }
 }
 
+const connectionDot = () => {
+  const dot = el('div', { class: 'conn-dot', title: 'Checking connection…' })
+  document.body.append(dot)
+  const refresh = async () => {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 5000)
+    try {
+      const res = await fetch('/browser.app/api/status', { signal: controller.signal })
+      dot.classList.toggle('ok', res.ok)
+      dot.classList.toggle('fail', !res.ok)
+      dot.title = res.ok ? 'Connected' : `Server responded ${res.status}`
+    } catch {
+      dot.classList.remove('ok')
+      dot.classList.add('fail')
+      dot.title = 'Server unreachable'
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+  refresh()
+  setInterval(refresh, 4000)
+}
+
 const boot = async () => {
+  connectionDot()
   applyFontScale()
   await loadLlmStatus()
   try {

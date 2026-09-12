@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog][kac], and this project adheres to
 [Semantic Versioning][semver].
 
+## [Unreleased]
+
+### Fixed (Unreleased)
+
+- WebAuthn registration no longer fails with "the relying party ID is
+  not a registrable domain suffix of, nor equal to the current domain"
+  when the app is reached through a host or port other than the
+  container hostname: the relying party ID and origin are now derived
+  from each request's `Host` and `X-Forwarded-Proto` headers (nginx
+  already forwards both), so a passkey registered at e.g.
+  `https://host:port` verifies at exactly that origin. Setting
+  `BROWSER_HOSTNAME` and `BROWSER_SCHEME` still overrides the RP ID
+  for setups where the access host changes between registration and
+  login (the RP ID must stay stable for a passkey to verify).
+
+### Added (Unreleased)
+
+- A connectivity indicator in the browser UI: a small fixed dot turns
+  green while a periodic status poll reaches the server and red (with
+  a pulse) when it does not, so a stopped or unreachable container is
+  visible while the tab stays open. The indicator is polled every 4
+  seconds with a 5-second request timeout.
+- The effective WebAuthn relying party ID, scheme and external port
+  are logged at startup (`LOG_LEVEL=debug`) and per registration and
+  login request via `rpID=... origin=...`.
+
 ## [0.18.4] - 2026-09-12
 
 ### Fixed (0.18.4)
