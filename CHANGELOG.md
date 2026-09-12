@@ -5,9 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog][kac], and this project adheres to
 [Semantic Versioning][semver].
 
-## [Unreleased]
+## [0.18.6] - 2026-09-12
 
-### Fixed (Unreleased)
+### Fixed (0.18.6)
 
 - Passkey verification failed server-side even after the RP ID fix:
   the bundled nginx forwarded the host with `proxy_set_header Host
@@ -18,7 +18,7 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
   WebAuthn origin prefers `X-Forwarded-Host` over `Host`, so the
   expected origin matches the browser exactly.
 
-### Added (Unreleased)
+### Added (0.18.6)
 
 - The registration and login verification failure logs now include
   the underlying error message instead of a bare
