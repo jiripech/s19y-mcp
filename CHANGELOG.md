@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog][kac], and this project adheres to
 [Semantic Versioning][semver].
 
+## [Unreleased]
+
+### Changed (Unreleased)
+
+- Slimmed the runtime image: base is now `node:26.8.2-bookworm-slim`
+  (de-pinned from the floating `node:current-bookworm` buildpack-deps
+  base) with `curl ca-certificates libgomp1` added at runtime -
+  `libgomp1` supplies OpenMP for the bundled llama-server. Only
+  `llama-server` plus its `*.so*` libraries are copied from the
+  builder stage, dropping the ~50 companion tools and test binaries.
+  Image size and push/pull time drop substantially.
+
 ## [0.18.1] - 2026-09-12
 
 ### Added (0.18.1)

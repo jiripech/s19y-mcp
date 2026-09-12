@@ -26,15 +26,18 @@ RUN cmake -B build -DGGML_NATIVE=OFF \
     && cmake --build build --config Release -j"$(nproc)" \
     && strip build/bin/llama-server
 
-FROM node:current-bookworm
+FROM node:26.8.2-bookworm-slim
 
-# Keep base packages patched; nginx terminates TLS in front of Node
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends nginx \
+# Keep base packages patched; nginx terminates TLS in front of Node.
+# curl + ca-certificates drive the bundled MODEL download and the SMTP
+# log alerts; libgomp1 supplies OpenMP for the bundled llama-server.
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends nginx curl ca-certificates libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 # llama.cpp builds the server binary plus its shared libraries
-# (libllama-server-impl.so, ggml backends) - copy the whole set
-COPY --from=llm-builder /src/build/bin/ /usr/local/lib/llama/
+# (libllama-server-impl.so, ggml backends) - copy only llama-server and
+# the *.so* it needs, skipping the ~50 companion tools and test binaries.
+COPY --from=llm-builder /src/build/bin/llama-server /src/build/bin/lib*.so* /usr/local/lib/llama/
 
 WORKDIR /app
 
