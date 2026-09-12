@@ -5,9 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog][kac], and this project adheres to
 [Semantic Versioning][semver].
 
-## [Unreleased]
+## [0.18.1] - 2026-09-12
 
-### Added (Unreleased)
+### Added (0.18.1)
 
 - Session IDs in the browser admin's "Recent sessions" list are shown
   in full as a click-to-copy badge instead of an 8-character
@@ -624,6 +624,8 @@ Initial release of the S19y MCP Server with the following features:
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html
+[0.18.1]: https://github.com/jiripech/s19y-mcp/compare/v0.18.0...v0.18.1
+
 [0.18.0]: https://github.com/jiripech/s19y-mcp/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/jiripech/s19y-mcp/compare/v0.16.1...v0.17.0
 [0.16.1]: https://github.com/jiripech/s19y-mcp/compare/v0.16.0...v0.16.1
