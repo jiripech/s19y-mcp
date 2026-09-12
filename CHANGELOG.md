@@ -7,7 +7,9 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
 
 ## [Unreleased]
 
-### Changed (Unreleased)
+## [0.18.2] - 2026-09-12
+
+### Changed (0.18.2)
 
 - Slimmed the runtime image: base is now `node:26.8.2-bookworm-slim`
   (de-pinned from the floating `node:current-bookworm` buildpack-deps
@@ -636,6 +638,8 @@ Initial release of the S19y MCP Server with the following features:
 
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html
+[0.18.2]: https://github.com/jiripech/s19y-mcp/compare/v0.18.1...v0.18.2
+
 [0.18.1]: https://github.com/jiripech/s19y-mcp/compare/v0.18.0...v0.18.1
 
 [0.18.0]: https://github.com/jiripech/s19y-mcp/compare/v0.17.0...v0.18.0
