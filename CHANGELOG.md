@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog][kac], and this project adheres to
 [Semantic Versioning][semver].
 
+## [Unreleased]
+
+### Added (Unreleased)
+
+- Session IDs in the browser admin's "Recent sessions" list are shown
+  in full as a click-to-copy badge instead of an 8-character
+  abbreviation, so a specific client session (e.g. an opencode
+  `ses_...` ID) can be found and copied directly.
+
 ## [0.18.0] - 2026-09-11
 
 ### Added (0.18.0)

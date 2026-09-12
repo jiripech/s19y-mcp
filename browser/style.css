@@ -698,6 +698,14 @@ select.input option {
   overflow-wrap: anywhere;
 }
 
+.session-main {
+  min-width: 0;
+}
+
+.id-badge.session-id {
+  max-width: 100%;
+}
+
 .tag-list {
   display: flex;
   flex-wrap: wrap;

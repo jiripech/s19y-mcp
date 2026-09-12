@@ -170,6 +170,32 @@ const escapeHtml = (value) => String(value)
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&#39;')
 
+const sessionIdBadge = (uuid) => {
+  const icon = el('span', { class: 'id-badge-icon' })
+  icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>'
+  const label = el('span', { class: 'id-badge-label' }, uuid)
+  const badge = el('button', {
+    class: 'badge id-badge session-id',
+    type: 'button',
+    'data-tip': 'Click to copy session ID',
+    title: uuid,
+    'aria-label': `Copy session ID ${uuid}`,
+    onclick: async (event) => {
+      event.stopPropagation()
+      const target = event.currentTarget
+      if (await copyText(uuid)) {
+        label.textContent = 'Copied'
+        target.classList.add('copied')
+        setTimeout(() => {
+          label.textContent = uuid
+          target.classList.remove('copied')
+        }, 1200)
+      }
+    }
+  }, [icon, label])
+  return badge
+}
+
 const copyText = async (text) => {
   try {
     await navigator.clipboard.writeText(text)
@@ -1001,7 +1027,6 @@ const renderAdmin = () => {
       }
       for (const record of data.sessions) {
         const meta = [
-          `session ${record.uuid ? String(record.uuid).slice(0, 8) : 'unknown'}`,
           record.source ? `identity ${record.source}` : 'not identified',
           `${record.connections || 0} connections`,
           record.transport ? record.transport : '',
@@ -1009,10 +1034,11 @@ const renderAdmin = () => {
           record.lastSeen ? `last seen ${formatDate(record.lastSeen)}` : ''
         ].filter(Boolean).join(' · ')
         sessionList.append(el('div', { class: 'card agent-row' }, [
-          el('div', {}, [
-            el('span', { class: 'agent-name' }, record.name),
+          el('div', { class: 'session-main' }, [
+            el('span', { class: 'agent-name' }, record.name || 'Unknown'),
             el('span', { class: 'agent-meta' }, meta)
-          ])
+          ]),
+          record.uuid ? sessionIdBadge(record.uuid) : null
         ]))
       }
     } catch (err) {
