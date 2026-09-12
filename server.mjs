@@ -245,6 +245,16 @@ app.use('/browser.app', createBrowserRouter(manager, {
   dataDir: DATA_DIR
 }))
 
-app.listen(Number(APP_PORT), APP_HOST, () => {
+const server = app.listen(Number(APP_PORT), APP_HOST, () => {
   logger.info(`MCP Memory Server running on ${APP_HOST}:${APP_PORT} (nginx serves the public port ${PORT}).`)
 })
+
+const shutdown = (signal) => {
+  logger.info(`Received ${signal}; closing HTTP server and exiting cleanly.`)
+  server.closeAllConnections()
+  server.close(() => process.exit(0))
+  // Guard: never let a shutdown outlive the docker stop grace period.
+  setTimeout(() => process.exit(0), 3000).unref()
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))

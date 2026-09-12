@@ -7,6 +7,26 @@ The format is based on [Keep a Changelog][kac], and this project adheres to
 
 ## [Unreleased]
 
+### Fixed (0.18.3)
+
+- `docker stop` now exits cleanly (exit code 0) instead of the
+  container being SIGKILLed after the stop grace period (exit 137,
+  which NAS/portal dashboards report as "stopped unexpectedly"). The
+  entrypoint stays as PID 1 and forwards SIGTERM to nginx,
+  llama-server and the MCP server, and `server.mjs` drains open
+  connections, closes the HTTP server and exits 0 with a 3s guard;
+  `docker-compose.yml` sets `stop_grace_period: 30s`.
+- Registration token observability: `GET /api/registration-token`
+  (superuser) returns the current token plus an env-managed flag, the
+  admin page shows the live token with a copy button, and `PUT` now
+  returns the new token and rejects whitespace-only values.
+
+### Changed (0.18.3)
+
+- Admin page reorganized into a left-hand navigation sidebar with
+  separate sections: Users, Registration token, Info pages, Agent name
+  pool, Identified agents and Recent sessions.
+
 ## [0.18.2] - 2026-09-12
 
 ### Changed (0.18.2)
