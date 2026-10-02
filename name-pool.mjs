@@ -71,27 +71,27 @@ const ordinal = (n) => {
 }
 
 const nextVariant = (name) => {
-  const match = name.match(/^(.*) the (\d+)(?:st|nd|rd|th)$/)
+  const match = name.match(/^(.*) the (\d+)(?:st|nd|rd|th)$/);
   if (match) {
-    return `${match[1]} the ${ordinal(parseInt(match[2], 10) + 1)}`
+    return `${match[1]} the ${ordinal(parseInt(match[2], 10) + 1)}`;
   }
-  return `${name} the 2nd`
+  return `${name} the 2nd`;
 }
 
 const persistNamesFile = async () => {
   try {
-    await mkdir(effectiveDataDir, { recursive: true })
+    await mkdir(effectiveDataDir, { recursive: true });
   } catch {
-    effectiveDataDir = 'data'
-    logger.warn(`Cannot create ${dataDir}, falling back to ${effectiveDataDir}`)
-    await mkdir(effectiveDataDir, { recursive: true })
+    effectiveDataDir = 'data';
+    logger.warn(`Cannot create ${dataDir}, falling back to ${effectiveDataDir}`);
+    await mkdir(effectiveDataDir, { recursive: true });
   }
-  const tmpFile = `${namesPath()}.tmp`
-  await writeFile(tmpFile, `${availableNames.join('\n')}\n`)
-  await rename(tmpFile, namesPath())
-}
+  const tmpFile = `${namesPath()}.tmp`;
+  await writeFile(tmpFile, `${availableNames.join('\n')}\n`);
+  await rename(tmpFile, namesPath());
+};
 
-export const getAvailableNames = () => [...availableNames]
+export const getAvailableNames = () => [...availableNames];
 
 export function getPoolState() {
   return {
@@ -99,39 +99,54 @@ export function getPoolState() {
     total: availableNames.length,
     defaultTotal: DEFAULT_NAMES.length,
     path: namesPath()
-  }
+  };
 }
 
 export async function initNamePool() {
   try {
-    await mkdir(effectiveDataDir, { recursive: true })
+    await mkdir(effectiveDataDir, { recursive: true });
     availableNames = (await readFile(namesPath(), 'utf8'))
       .split('\n')
       .map(line => line.trim())
-      .filter(Boolean)
+      .filter(Boolean);
   } catch {
-    availableNames = [...DEFAULT_NAMES]
-    await persistNamesFile()
-    logger.info(`Created ${namesPath()} with ${availableNames.length} default names`)
+    availableNames = [...DEFAULT_NAMES];
+    await persistNamesFile();
+    logger.info(`Created ${namesPath()} with ${availableNames.length} default names`);
   }
-  logger.info(`Agent name pool: ${availableNames.length} names available (${namesPath()})`)
+  logger.info(`Agent name pool: ${availableNames.length} names available (${namesPath()})`);
 }
 
 export function claimName(source) {
-  if (!source) {
-    return Promise.resolve(false)
-  }
+  if (!source) return Promise.resolve(false);
   const run = async () => {
-    const index = availableNames.indexOf(source)
-    if (index === -1) {
-      return false
+    const index = availableNames.indexOf(source);
+    if (index === -1) return false;
+    const next = nextVariant(source);
+    availableNames[index] = next;
+    await persistNamesFile();
+    logger.info(`Agent identity "${source}" claimed, next available variant "${next}"`);
+    return true;
+  };
+  claimChain = claimChain.then(run, run);
+  return claimChain;
+}
+
+export async function reclaimBaseName(source) {
+  // Reclaim <base> the Nth back to <base>, used when an agent reconnects with their base name
+  const re = /^(.+?)\s+the\s+(\d+)(?:st|nd|rd|th)$/;
+  for (let i = 0; i < availableNames.length; i++) {
+    const match = availableNames[i].match(re);
+    if (match) {
+      const candidateBase = match[1].trim();
+      if (candidateBase === source) {
+        // Reclaim: replace "agent the 2nd" with "agent"
+        availableNames[i] = source;
+        await persistNamesFile();
+        logger.info(`Agent identity "${source}" reclaimed, next available variant "${nextVariant(source)}"`);
+        return true;
+      }
     }
-    const next = nextVariant(source)
-    availableNames.splice(index, 1, next)
-    await persistNamesFile()
-    logger.info(`Agent identity "${source}" claimed, next available variant "${next}"`)
-    return true
   }
-  claimChain = claimChain.then(run, run)
-  return claimChain
+  return false;
 }

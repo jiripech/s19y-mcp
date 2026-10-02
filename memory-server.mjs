@@ -43,25 +43,33 @@ export async function createServer(manager, options = {}) {
     manager = new KnowledgeGraphManager(memoryPath)
   }
   const session = options.session || null
+  const shmName = process.env.MCP_SHM_NAME
   const withNotice = (result) => {
     if (session && !session.identified) {
       const remembered = findPreviousClaim({ uuid: session.uuid, name: session.name })
-      let notice =
-        `Anonymous session (codename "${session.name}"). Before writing ` +
-        'anything, establish a permanent identity: call the ' +
-        'list_available_names tool, pick the FIRST available name in the ' +
-        'list, tell your user which name you picked, then pass it as ' +
-        'source on every store_memory and update_memory call.'
-      if (remembered) {
-        notice +=
-          ` This session has a previously claimed identity "` +
-          `${remembered}". If that was yours, reuse it as source instead ` +
-          'of picking a new name.'
+      let notice = '';
+      if (shmName && session?.source === undefined) {
+        // If MCP_SHM_NAME is set and the session doesn't have a source yet,
+        // use it as the identity name instead of calling list_available_names.
+        notice = `Use MCP_SHM_NAME (${shmName}) as your source name when storing memories.`;
+      } else {
+        notice =
+          `Anonymous session (codename "${session.name}"). Before writing ` +
+          'anything, establish a permanent identity: call the ' +
+          'list_available_names tool, pick the FIRST available name in the ' +
+          'list, tell your user which name you picked, then pass it as ' +
+          'source on every store_memory and update_memory call.'
+        if (remembered) {
+          notice +=
+            ` This session has a previously claimed identity "` +
+            `${remembered}". If that was yours, reuse it as source instead ` +
+            'of picking a new name.'
+        }
       }
       result.identityNotice = notice
     }
     return result
-  }
+  };
   const markIdentified = (source) => {
     if (session && source) {
       session.identified = true
@@ -197,7 +205,7 @@ export async function createServer(manager, options = {}) {
 
   const server = new McpServer({
     name: 's19y-memory',
-    version: '0.18.6'
+    version: '0.18.7'
   }, {
     instructions: 'Shared memory pool for multiple agents. Each session ' +
       'is assigned a codename shown in server logs. If no X-Agent-Name ' +
