@@ -5,25 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog][kac], and this project adheres to
 [Semantic Versioning][semver].
 
+## [0.18.7] - 2026-09-22
+
+### Fixed (0.18.7)
+
+- Reconnecting agents now reuse their base name from the pool instead of receiving a new ordinal variant (`agent → agent the 2nd`). The `store_memory` and `update_memory` handlers reclaim the base name via `reclaimBaseName` before claiming, so agents that reconnect with their previous claimed identity automatically get back to `<base>` (e.g., "Epictetus" instead of "Epictetus the 2nd"). This removes the need for the MCP `assign_name` tool at startup — agents just use their remembered base name as source on their first memory write after reconnecting.
+
+### Added (0.18.7)
+
+- plenty of tests
+
 ## [0.18.6] - 2026-09-12
 
 ### Fixed (0.18.6)
 
-- Passkey verification failed server-side even after the RP ID fix:
-  the bundled nginx forwarded the host with `proxy_set_header Host
-  $host`, and nginx's `$host` variable strips the port, so the server
+- Passkey verification failed server-side even after
+  the RP ID fix: the bundled nginx forwarded the host with `proxy_set_header Host $host`, and nginx's `$host` variable strips the port, so the server
   derived origin `https://host` while the browser signs
-  `https://host:port`. nginx now forwards `$http_host` (the raw
-  `Host` header including the port) plus `X-Forwarded-Host`, and the
-  WebAuthn origin prefers `X-Forwarded-Host` over `Host`, so the
+  `https://host:port`. nginx now forwards `$http_host` (the raw `Host` header including the port) plus `X-Forwarded-Host`, and the WebAuthn origin
+  prefers `X-Forwarded-Host` over `Host`, so the
   expected origin matches the browser exactly.
 
 ### Added (0.18.6)
 
-- The registration and login verification failure logs now include
-  the underlying error message instead of a bare
-  "verification failed" line, making future WebAuthn mismatches
-  diagnosable from `docker logs` alone.
+- The registration and login verification failure logs
+  now include the underlying error message instead of a bare "verification failed" line, making future
+  WebAuthn mismatches diagnosable from `docker logs` alone.
 
 ## [0.18.5] - 2026-09-12
 
