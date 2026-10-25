@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog][kac], and this project adheres to
 [Semantic Versioning][semver].
 
+## [0.18.8] - 2026-10-25
+
+- **Updated** defauly instructions for session identity management
+  and implemented caching of the instructions.
+
 ## [0.18.7] - 2026-09-22
 
 ### Fixed (0.18.7)
