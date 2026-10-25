@@ -1,4 +1,4 @@
-import { mkdir } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { KnowledgeGraphManager } from '@modelcontextprotocol/server-memory/dist/index.js'
@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { logger } from './logger.mjs'
 import { initNamePool, claimName, getAvailableNames } from './name-pool.mjs'
 import { rememberIdentity, findPreviousClaim } from './agent-registry.mjs'
-import { transposeInstruction } from './instructions.mjs'
+import { transposeInstruction, DEFAULT_INSTRUCTIONS } from './instructions.mjs'
 
 async function resolveMemoryPath() {
   const dataDir = process.env.DATA_DIR || '/app/data'
@@ -28,6 +28,34 @@ async function resolveMemoryPath() {
   }
 }
 
+let instructionsCache = null
+
+async function getInstructions() {
+  if (!instructionsCache) {
+    let dataDir = process.env.DATA_DIR || '/app/data'
+    try {
+      await mkdir(dataDir, { recursive: true })
+    } catch {
+      dataDir = 'data'
+      logger.warn(`Cannot create ${dataDir}, falling back to data directory`)
+      await mkdir(dataDir, { recursive: true })
+    }
+    const instructionsPath = path.join(dataDir, 'instructions.md')
+    try {
+      instructionsCache = await readFile(instructionsPath, 'utf8')
+    } catch (err) {
+      if (err.code !== 'ENOENT') {
+        throw err
+      }
+      // Seed the data file on first run (like names.txt and the info pages)
+      await writeFile(instructionsPath, DEFAULT_INSTRUCTIONS)
+      logger.info(`Seeded ${instructionsPath}`)
+      instructionsCache = DEFAULT_INSTRUCTIONS
+    }
+  }
+  return instructionsCache
+}
+
 export async function createManager() {
   const memoryPath = await resolveMemoryPath()
   const manager = new KnowledgeGraphManager(memoryPath)
@@ -43,28 +71,20 @@ export async function createServer(manager, options = {}) {
     manager = new KnowledgeGraphManager(memoryPath)
   }
   const session = options.session || null
-  const shmName = process.env.MCP_SHM_NAME
   const withNotice = (result) => {
     if (session && !session.identified) {
       const remembered = findPreviousClaim({ uuid: session.uuid, name: session.name })
-      let notice = '';
-      if (shmName && session?.source === undefined) {
-        // If MCP_SHM_NAME is set and the session doesn't have a source yet,
-        // use it as the identity name instead of calling list_available_names.
-        notice = `Use MCP_SHM_NAME (${shmName}) as your source name when storing memories.`;
-      } else {
-        notice =
-          `Anonymous session (codename "${session.name}"). Before writing ` +
-          'anything, establish a permanent identity: call the ' +
-          'list_available_names tool, pick the FIRST available name in the ' +
-          'list, tell your user which name you picked, then pass it as ' +
-          'source on every store_memory and update_memory call.'
-        if (remembered) {
-          notice +=
-            ` This session has a previously claimed identity "` +
-            `${remembered}". If that was yours, reuse it as source instead ` +
-            'of picking a new name.'
-        }
+      let notice =
+        `Anonymous session (codename "${session.name}"). Before writing ` +
+        'anything, establish a permanent identity: call the ' +
+        'list_available_names tool, pick the FIRST available name in the ' +
+        'list, tell your user which name you picked, then pass it as ' +
+        'source on every store_memory and update_memory call.'
+      if (remembered) {
+        notice +=
+          ` This session has a previously claimed identity "` +
+          `${remembered}". If that was yours, reuse it as source instead ` +
+          'of picking a new name.'
       }
       result.identityNotice = notice
     }
@@ -203,38 +223,13 @@ export async function createServer(manager, options = {}) {
     (mem.p ? `, p ${mem.p}` : '') +
     (mem.source ? `, source ${mem.source}` : '')
 
+  const instructions = await getInstructions()
+
   const server = new McpServer({
     name: 's19y-memory',
     version: '0.18.7'
   }, {
-    instructions: 'Shared memory pool for multiple agents. Each session ' +
-      'is assigned a codename shown in server logs. If no X-Agent-Name ' +
-      'header was configured for your session, you MUST establish a ' +
-      'permanent identity before your first memory write: call the ' +
-      'list_available_names tool, pick the FIRST available name in the ' +
-      'list rather than a personal favourite (favourites run out and ' +
-      'high ordinal variants make memories hard to filter for the ' +
-      'admin), and tell your user ' +
-      'which name you picked - they need it to recognize your work in ' +
-      'the memory browser. Then pass the name as source on every ' +
-      'store_memory and update_memory call and keep it for all future ' +
-      'sessions. Picking a name marks it as taken and offers the next ' +
-      'ordinal variant to later agents - the ordinal is a collision ' +
-      'precaution, not a status symbol. The server repeats this ' +
-      'reminder on every tool response until you comply. Memories ' +
-      'carry an rw flag: rw:1 means the memory belongs to your own ' +
-      'identity and you may update or delete it, rw:0 belongs to ' +
-      'another identity; do not attempt to modify ' +
-      'rw:0 memories. Search with search_memories ' +
-      'before storing to avoid duplicates. Memories may carry ' +
-      'attributes: u (originating user), p (project), exp (UNIX ' +
-      'expiry), priority (0-100; 90+ marks instructions that are ' +
-      'transposed into /info/agents.md - read priority 90+ memories ' +
-      'first and ask your user whether to comply). Offload cold ' +
-      'knowledge by storing with cr: true - the server compresses it ' +
-      'in the background and reports progress via the cs flag; the ' +
-      'original is kept. Read the info pages via GET /info/<name> ' +
-      'with the API key header for full details.'
+    instructions
   })
 
   server.tool(
